@@ -1,0 +1,22 @@
+{% load wagtailcore_tags wagtailimages_tags site_tags %}
+{% if value.title %}<div class="bhead"><h2>{{ value.title }}</h2>{% if value.text %}<p>{{ value.text }}</p>{% endif %}</div>{% endif %}
+{% if value.style == "photo" %}
+<div class="cards cards-{{ value.columns }} reveal-group">
+{% for item in value.items %}
+  {% if item.page %}<a class="card" href="{% pageurl item.page.localized %}">{% else %}<div class="card">{% endif %}
+    <span class="card-media">{% if item.image %}{% image item.image fill-640x520 format-webp loading="lazy" alt="" %}{% else %}{% include "includes/ph.html" %}{% endif %}</span>
+    <span class="card-body"><b>{{ item.title }}</b>{% if item.text %}<span class="card-text">{{ item.text }}</span>{% endif %}</span>
+  {% if item.page %}</a>{% else %}</div>{% endif %}
+{% endfor %}
+</div>
+{% else %}
+<div class="feats feats-{{ value.columns }} reveal-group">
+{% for item in value.items %}
+  {% if item.page %}<a class="feat" href="{% pageurl item.page.localized %}">{% else %}<div class="feat">{% endif %}
+    <small>{% if value.style == "numbered" %}{{ forloop.counter|two_digits }}{% else %}—{% endif %}</small>
+    <h3>{{ item.title }}</h3>{% if item.text %}<p>{{ item.text }}</p>{% endif %}
+    {% if item.page %}<svg class="icon"><use href="#i-arrow"/></svg>{% endif %}
+  {% if item.page %}</a>{% else %}</div>{% endif %}
+{% endfor %}
+</div>
+{% endif %}

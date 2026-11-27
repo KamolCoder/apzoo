@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% load site_tags %}
+{% block content %}
+{% include "includes/page_head.html" %}
+{% if page.body %}<section class="sec"><div class="wrap">{% include "includes/body.html" with body=page.body %}</div></section>{% endif %}
+<section class="sec sec-cream" id="form">
+  <div class="wrap form-split">
+    <div class="form-side">
+      <h2>{% t "partner_form" %}</h2>
+      {% if page.form_intro %}<p>{{ page.form_intro }}</p>{% endif %}
+      <a class="link" href="mailto:{{ settings.core.SiteSettings.partners_email }}"><svg class="icon"><use href="#i-mail"/></svg>{{ settings.core.SiteSettings.partners_email }}</a>
+    </div>
+    <div class="form-box">{% include "includes/lead_form.html" %}</div>
+  </div>
+</section>
+{% endblock %}

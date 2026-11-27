@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% load site_tags %}
+{% block content %}
+{% include "includes/page_head.html" %}
+<section class="sec">
+  <div class="wrap">
+    {% if active %}<div class="cards cards-4 reveal-group">{% for promo in active %}{% include "includes/promo_card.html" %}{% endfor %}</div>
+    {% else %}<p class="empty">{% t "no_promos" %}</p>{% endif %}
+    {% if upcoming %}<div class="cards cards-4 cards-next reveal-group">{% for promo in upcoming %}{% include "includes/promo_card.html" %}{% endfor %}</div>{% endif %}
+    <p class="note">{% t "promo_note" %}</p>
+  </div>
+</section>
+{% if archive %}
+<section class="sec sec-cream">
+  <div class="wrap">
+    <div class="sec-head"><h2>{% t "promo_archive" %}</h2></div>
+    <div class="cards cards-4">{% for promo in archive %}{% include "includes/promo_card.html" %}{% endfor %}</div>
+  </div>
+</section>
+{% endif %}
+{% endblock %}

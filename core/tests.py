@@ -1,0 +1,562 @@
+from django.core import mail
+from django.core.cache import cache
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.core.management import call_command
+from django.test import TestCase, TransactionTestCase, override_settings
+
+from leads.models import Feedback, JobApplication, PartnerRequest
+from pages.models import HomePage, PromoPage, VacancyPage
+from stores.models import StorePage, is_open_at
+
+
+@override_settings(SECURE_SSL_REDIRECT=False, LEADS_NOTIFY_EMAILS=["team@example.com"],
+                   EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
+class SiteTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        call_command("seed_demo", verbosity=0)
+
+    def setUp(self):
+        cache.clear()
+
+    def test_three_languages_have_a_home(self):
+        self.assertEqual(set(HomePage.objects.values_list("locale__language_code", flat=True)), {"ru", "uz", "en"})
+        for lang in ("ru", "uz", "en"):
+            self.assertEqual(self.client.get(f"/{lang}/").status_code, 200)
+
+    def test_root_redirects_to_a_language(self):
+        resp = self.client.get("/")
+        self.assertEqual(resp.status_code, 302)
+        self.assertTrue(resp["Location"].startswith("/ru/"))
+
+    def test_every_page_renders(self):
+        from wagtail.models import Page
+        for page in Page.objects.live().filter(depth__gte=2).specific():
+            with self.subTest(url=page.url):
+                self.assertEqual(self.client.get(page.url).status_code, 200)
+
+    def test_english_has_no_promos_and_no_menu_link(self):
+        self.assertEqual(self.client.get("/en/promos/").status_code, 404)
+        html = self.client.get("/en/").content.decode()
+        self.assertNotIn("/en/promos/", html)
+        self.assertIn("/en/partners/", html)
+
+    def test_language_switch_points_to_same_page(self):
+        html = self.client.get("/ru/stores/store-01/").content.decode()
+        self.assertIn('href="/uz/stores/store-01/"', html)
+        self.assertIn('href="/en/stores/store-01/"', html)
+        # a promo has no EN translation -> EN link goes to the EN home
+        html = self.client.get("/ru/promos/promo-1/").content.decode()
+        self.assertIn('href="/en/"', html)
+
+    def test_store_page_has_jsonld_and_nearby(self):
+        resp = self.client.get("/ru/stores/store-01/")
+        self.assertContains(resp, '"@type": "PetStore"')
+        self.assertEqual(len(resp.context["nearby"]), 3)
+
+    def test_stores_api(self):
+        data = self.client.get("/api/stores/uz/").json()
+        self.assertEqual(data["count"], StorePage.objects.filter(locale__language_code="uz").count())
+        self.assertIn("lat", data["results"][0])
+
+    def test_promo_split_active_archive(self):
+        resp = self.client.get("/ru/promos/")
+        active = list(resp.context["active"])
+        self.assertTrue(active and all(p.is_active for p in active))
+        self.assertTrue(all(p.is_over for p in resp.context["archive"]))
+        self.assertTrue(PromoPage.objects.filter(locale__language_code="en").count() == 0)
+
+    def test_open_hours(self):
+        from datetime import time
+        self.assertTrue(is_open_at(time(9), time(22), time(21, 59)))
+        self.assertFalse(is_open_at(time(9), time(22), time(22)))
+        self.assertTrue(is_open_at(time(9), time(2), time(1)))
+        self.assertTrue(is_open_at(time(0), time(0), time(4)))
+
+
+@override_settings(SECURE_SSL_REDIRECT=False, LEADS_NOTIFY_EMAILS=["team@example.com"],
+                   EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
+class LeadFormTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        call_command("seed_demo", verbosity=0)
+
+    def setUp(self):
+        cache.clear()
+
+    def test_partner_request_saved_and_notified(self):
+        resp = self.client.post("/en/partners/", {
+            "kind": "brand", "company": "Acme Pet GmbH", "country": "Germany", "contact_name": "Anna",
+            "email": "anna@acme.example", "message": "Hello", "consent": "on"})
+        self.assertEqual(resp.status_code, 302)
+        self.assertIn("sent=1", resp["Location"])
+        req = PartnerRequest.objects.get()
+        self.assertEqual((req.company, req.language), ("Acme Pet GmbH", "en"))
+        self.assertEqual(len(mail.outbox), 1)
+
+    def test_vacancy_application_with_resume(self):
+        vacancy = VacancyPage.objects.filter(locale__language_code="ru").first()
+        cv = SimpleUploadedFile("cv.pdf", b"%PDF-1.4 test", content_type="application/pdf")
+        resp = self.client.post(vacancy.url, {"name": "Алишер", "phone": "+998901234567", "consent": "on",
+                                              "resume": cv})
+        self.assertEqual(resp.status_code, 302)
+        app = JobApplication.objects.get()
+        self.assertEqual(app.vacancy_id, vacancy.pk)
+        self.assertEqual(app.vacancy_title, vacancy.title)
+        self.assertTrue(app.resume.name.endswith(".pdf"))
+        self.assertIn("/cms/leads/resume/", app.resume.url)
+        self.assertEqual(self.client.get(app.resume.url).status_code, 302)  # anonymous -> CMS login
+        app.resume.delete()
+
+    def test_bad_resume_rejected(self):
+        vacancy = VacancyPage.objects.filter(locale__language_code="ru").first()
+        exe = SimpleUploadedFile("cv.exe", b"MZ", content_type="application/octet-stream")
+        resp = self.client.post(vacancy.url, {"name": "X", "phone": "1", "consent": "on", "resume": exe})
+        self.assertEqual(resp.status_code, 200)
+        self.assertFalse(JobApplication.objects.exists())
+
+    def test_feedback_needs_phone_or_email_and_consent(self):
+        resp = self.client.post("/ru/contacts/", {"topic": "feedback", "name": "A", "message": "hi", "consent": "on"})
+        self.assertEqual(resp.status_code, 200)
+        resp = self.client.post("/ru/contacts/", {"topic": "feedback", "name": "A", "message": "hi",
+                                                  "phone": "+998901112233"})
+        self.assertEqual(resp.status_code, 200)
+        self.assertFalse(Feedback.objects.exists())
+
+    def test_honeypot_pretends_success(self):
+        resp = self.client.post("/ru/contacts/", {"topic": "feedback", "name": "Bot", "message": "spam",
+                                                  "phone": "1", "consent": "on", "company_url": "http://spam"})
+        self.assertEqual(resp.status_code, 302)
+        self.assertFalse(Feedback.objects.exists())
+
+    def test_rate_limit(self):
+        data = {"topic": "feedback", "name": "A", "message": "hi", "phone": "+998901112233", "consent": "on"}
+        for _ in range(10):
+            self.assertEqual(self.client.post("/ru/contacts/", data).status_code, 302)
+        self.assertEqual(self.client.post("/ru/contacts/", data).status_code, 200)
+        self.assertEqual(Feedback.objects.count(), 10)
+
+
+@override_settings(SECURE_SSL_REDIRECT=False)
+class CmsTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        call_command("seed_demo", verbosity=0)
+
+    def test_light_theme_forced_and_dashboard_panels(self):
+        from django.contrib.auth import get_user_model
+        from wagtail.users.models import UserProfile
+        user = get_user_model().objects.create_superuser("ed", "ed@example.com", "pass12345")
+        profile = UserProfile.get_for_user(user)
+        profile.theme = "dark"
+        profile.save()
+        self.assertEqual(UserProfile.get_for_user(user).theme, "light")
+        Feedback.objects.create(name="Мадина", phone="1", message="hi")
+        self.client.force_login(user)
+        html = self.client.get("/cms/").content.decode()
+        self.assertIn("w-theme-light", html)
+        for text in ("Быстрые действия", "Новые заявки", "Действующие акции", "Мадина", "Animal Planet CMS"):
+            self.assertIn(text, html)
+
+
+class BackupTests(TransactionTestCase):
+    def test_backup_and_rotation(self):
+        import sqlite3
+        import tempfile
+        from pathlib import Path
+        with tempfile.TemporaryDirectory() as tmp, override_settings(BACKUP_DIR=tmp, BACKUP_KEEP=2,
+                                                                     MEDIA_ROOT=Path(tmp) / "m",
+                                                                     PRIVATE_MEDIA_ROOT=Path(tmp) / "p"):
+            (Path(tmp) / "db-20000101-000000.sqlite3").write_bytes(b"old")
+            (Path(tmp) / "db-20000102-000000.sqlite3").write_bytes(b"old")
+            Feedback.objects.create(name="X", phone="1", message="m")
+            call_command("backup_db", "--with-files", stdout=open("/dev/null", "w"))
+            dbs = sorted(Path(tmp).glob("db-*.sqlite3"))
+            self.assertEqual(len(dbs), 2)  # oldest removed
+            self.assertFalse((Path(tmp) / "db-20000101-000000.sqlite3").exists())
+            con = sqlite3.connect(dbs[-1])
+            self.assertEqual(con.execute("select count(*) from leads_feedback").fetchone()[0], 1)
+            con.close()
+            self.assertEqual(len(list(Path(tmp).glob("files-*.tar.gz"))), 1)
+
+
+@override_settings(SECURE_SSL_REDIRECT=False, SITE_URL="https://animalplanet.uz", ALLOWED_HOSTS=["animalplanet.uz", "testserver"])
+class SeoTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        call_command("seed_demo", verbosity=0)
+        call_command("sync_site", stdout=open("/dev/null", "w"))
+
+    def head(self, url):
+        import re
+        html = self.client.get(url, HTTP_HOST="animalplanet.uz", secure=True).content.decode()
+        return html, re.search(r"<head>(.*?)</head>", html, re.S).group(1)
+
+    def test_canonical_uses_site_url(self):
+        _, head = self.head("/ru/stores/store-01/")
+        self.assertIn('<link rel="canonical" href="https://animalplanet.uz/ru/stores/store-01/">', head)
+        self.assertIn('hreflang="x-default" href="https://animalplanet.uz/ru/stores/store-01/"', head)
+
+    def test_sitemap_has_every_language_and_alternates(self):
+        xml = self.client.get("/sitemap.xml").content.decode()
+        for lang in ("ru", "uz", "en"):
+            self.assertIn(f"<loc>https://animalplanet.uz/{lang}/</loc>", xml)
+        self.assertIn('hreflang="x-default"', xml)
+        self.assertNotIn("localhost", xml)
+        self.assertNotIn("/promo-6/", xml)  # ended promo
+
+    def test_robots_points_to_sitemap(self):
+        txt = self.client.get("/robots.txt").content.decode()
+        self.assertIn("Sitemap: https://animalplanet.uz/sitemap.xml", txt)
+        self.assertIn("Disallow: /cms/", txt)
+
+    def test_auto_titles_descriptions_and_structured_data(self):
+        _, head = self.head("/ru/stores/store-01/")
+        self.assertIn("<title>Зоомагазин Animal Planet — Чиланзар, 1-й квартал, Ташкент</title>", head)
+        self.assertIn('<meta name="description" content="Зоомагазин Animal Planet:', head)
+        self.assertIn('"@type": "PetStore"', head)
+        self.assertIn('"@type": "BreadcrumbList"', head)
+        _, head = self.head("/ru/careers/vacancy-1/")
+        self.assertIn('"@type": "JobPosting"', head)
+        self.assertIn('"minValue": 4000000', head)
+        _, head = self.head("/ru/")
+        self.assertIn('"@type": "Organization"', head)
+
+    def test_ended_promo_is_noindex(self):
+        _, head = self.head("/ru/promos/promo-6/")
+        self.assertIn('<meta name="robots" content="noindex, follow">', head)
+        _, head = self.head("/ru/promos/promo-1/")
+        self.assertNotIn("noindex", head)
+
+    def test_verification_and_analytics(self):
+        from core.models import SiteSettings
+        s = SiteSettings.load()
+        s.yandex_verification, s.google_verification, s.yandex_metrika_id = "abc123", "g-XyZ_1", "12345678"
+        s.save()
+        html, head = self.head("/ru/")
+        self.assertIn('<meta name="yandex-verification" content="abc123">', head)
+        self.assertIn('<meta name="google-site-verification" content="g-XyZ_1">', head)
+        self.assertTrue('ym(12345678,"init"' in html)  # tests run with DEBUG=False
+        with override_settings(DEBUG=True):
+            html, _ = self.head("/ru/")
+        self.assertFalse("mc.yandex.ru" in html)  # no counters on a dev machine
+
+    def test_bad_metrika_id_rejected(self):
+        from django.core.exceptions import ValidationError
+        from core.models import SiteSettings
+        s = SiteSettings.load()
+        s.yandex_metrika_id = "<script>"
+        with self.assertRaises(ValidationError):
+            s.full_clean()
+
+
+class IconTests(TestCase):
+    def test_root_icons_and_manifest(self):
+        resp = self.client.get("/favicon.ico")
+        self.assertEqual((resp.status_code, resp["Content-Type"]), (200, "image/x-icon"))
+        self.assertEqual(self.client.get("/apple-touch-icon.png").status_code, 200)
+        data = self.client.get("/site.webmanifest").json()
+        self.assertEqual([i["sizes"] for i in data["icons"]], ["48x48", "96x96", "192x192"])
+
+    def test_icons_in_head(self):
+        call_command("seed_demo", verbosity=0)
+        html = self.client.get("/ru/").content.decode()
+        self.assertIn('<link rel="icon" href="/favicon.ico"', html)
+        self.assertIn('rel="apple-touch-icon"', html)
+
+
+@override_settings(SECURE_SSL_REDIRECT=False, MEDIA_ROOT=__import__("tempfile").mkdtemp(prefix="ap-media-"))
+class SectionTests(TestCase):
+    """Catalogue, charity, home sections, news rubrics, store gallery/city, CMS roles."""
+
+    @classmethod
+    def setUpTestData(cls):
+        call_command("seed_demo", verbosity=0)
+
+    def test_home_shows_every_section_in_order(self):
+        html = self.client.get("/ru/").content.decode()
+        markers = ["/ru/promos/promo-", "Крупная сеть зоомагазинов", "/ru/catalog/dogs/", "Проверенный ассортимент",
+                   "data-overview-map", "/ru/news/news-", "home-charity", "Royal Canin"]
+        positions = [html.index(m) for m in markers]
+        self.assertEqual(positions, sorted(positions))
+        self.assertIn(">23<", html)  # {stores} placeholder in stats replaced by the store count
+
+    def test_home_sections_can_be_switched_off(self):
+        home = HomePage.objects.get(locale__language_code="ru")
+        home.show_categories = home.show_charity = home.show_brands = False
+        home.save_revision().publish()
+        html = self.client.get("/ru/").content.decode()
+        self.assertNotIn("/ru/catalog/dogs/", html)
+        self.assertNotIn("home-charity", html)
+
+    def test_catalogue(self):
+        resp = self.client.get("/ru/catalog/")
+        self.assertEqual(len(resp.context["categories"]), 8)
+        resp = self.client.get("/ru/catalog/dogs/")
+        self.assertContains(resp, "Сухие корма")
+        self.assertContains(resp, "Royal Canin")
+        self.assertEqual(self.client.get("/uz/catalog/cats/").status_code, 200)
+
+    def test_charity_groups_and_story_status(self):
+        resp = self.client.get("/ru/help/")
+        self.assertEqual(len(resp.context["stories"]), 2)
+        self.assertContains(resp, "Ищет дом")
+        self.assertEqual(self.client.get("/en/help/").status_code, 404)  # RU + UZ only
+
+    def test_news_kind_filter_and_article_jsonld(self):
+        resp = self.client.get("/ru/news/?kind=vet")
+        self.assertEqual([p.kind for p in resp.context["news_page"]], ["vet"])
+        resp = self.client.get("/ru/news/?kind=bogus")
+        self.assertEqual(resp.context["kind"], "")
+        self.assertContains(self.client.get("/ru/news/news-1/"), '"@type": "NewsArticle"')
+
+    def test_store_city_and_gallery(self):
+        from wagtail.images.tests.utils import get_test_image_file
+        from wagtail.images.models import Image
+        from stores.models import StorePhoto
+        store = StorePage.objects.get(locale__language_code="ru", slug="store-01")
+        img = Image.objects.create(title="shop", file=get_test_image_file())
+        StorePhoto.objects.create(page=store, image=img, caption="Торговый зал")
+        resp = self.client.get(store.url)
+        self.assertContains(resp, "Торговый зал")
+        self.assertContains(resp, '"addressLocality": "Ташкент"')
+        self.assertEqual(self.client.get("/api/stores/ru/").json()["results"][0]["city"], "Ташкент")
+
+    def test_privacy_link_in_footer(self):
+        self.assertContains(self.client.get("/uz/"), 'href="/uz/privacy/"')
+
+    def test_setup_roles_limits_sections(self):
+        from django.contrib.auth.models import Group
+        from wagtail.models import GroupPagePermission
+        call_command("setup_roles", stdout=open("/dev/null", "w"))
+        call_command("setup_roles", stdout=open("/dev/null", "w"))  # idempotent
+        hr = Group.objects.get(name="HR")
+        pages = set(GroupPagePermission.objects.filter(group=hr).values_list("page__slug", flat=True))
+        self.assertEqual(pages, {"careers"})
+        self.assertTrue(hr.permissions.filter(codename="view_jobapplication").exists())
+        self.assertEqual(GroupPagePermission.objects.filter(group=hr, permission__codename="publish_page").count(), 2)
+
+
+@override_settings(SECURE_SSL_REDIRECT=False, MEDIA_ROOT=__import__("tempfile").mkdtemp(prefix="ap-media-"))
+class SamplePhotoTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        call_command("seed_demo", verbosity=0)
+
+    def test_seed_and_remove_sample_photos(self):
+        from io import BytesIO
+        from unittest import mock
+        from PIL import Image as PILImage
+        from catalog.models import CategoryPage
+
+        def fake_download(photo_id):
+            buf = BytesIO()
+            PILImage.new("RGB", (64, 48), "orange").save(buf, "JPEG")
+            return buf.getvalue()
+
+        with mock.patch("core.management.commands.seed_photos.download", side_effect=fake_download):
+            call_command("seed_photos", stdout=open("/dev/null", "w"))
+        self.assertTrue(all(c.image_id for c in CategoryPage.objects.all()))
+        store = StorePage.objects.get(locale__language_code="ru", slug="store-01")
+        self.assertTrue(store.image_id)
+        self.assertEqual(store.photos.count(), 2)
+        home = HomePage.objects.get(locale__language_code="ru")
+        self.assertEqual(len(home.hero_photos), 3)
+        self.assertEqual(self.client.get("/ru/").status_code, 200)
+        self.assertEqual(self.client.get("/ru/about/").status_code, 200)
+
+        call_command("seed_photos", "--remove", stdout=open("/dev/null", "w"))
+        self.assertFalse(CategoryPage.objects.filter(image__isnull=False).exists())
+        self.assertEqual(self.client.get("/ru/").status_code, 200)
+        self.assertEqual(self.client.get("/ru/about/").status_code, 200)
+
+
+@override_settings(SECURE_SSL_REDIRECT=False)
+class DeliveryLoyaltyTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        call_command("seed_demo", verbosity=0)
+
+    def set_links(self):
+        from core.models import SiteSettings
+        s = SiteSettings.load()
+        s.app_store_url = "https://apps.apple.com/app/id1"
+        s.google_play_url = "https://play.google.com/store/apps/details?id=uz.ap"
+        s.uds_url = "https://ap.uds.app/c/join?ref=x"
+        s.uds_code = "ANIMALPLANET"
+        s.short_phone = "1234"
+        s.save()
+
+    def test_pages_without_links_hide_buttons(self):
+        from core.models import SiteSettings
+        s = SiteSettings.load()
+        s.app_store_url = s.google_play_url = s.uds_url = s.uds_code = ""
+        s.save()
+        resp = self.client.get("/ru/delivery/")
+        self.assertContains(resp, "Express24")
+        self.assertNotContains(resp, 'class="app"')
+        self.assertNotContains(self.client.get("/ru/bonus/"), "data-copy")
+
+    def test_links_buttons_qr_and_short_number(self):
+        self.set_links()
+        html = self.client.get("/ru/delivery/").content.decode()
+        self.assertIn('data-android="https://play.google.com/store/apps/details?id=uz.ap"', html)
+        self.assertIn('class="segno"', html)
+        html = self.client.get("/ru/bonus/").content.decode()
+        self.assertIn('data-copy="ANIMALPLANET"', html)
+        self.assertIn("https://ap.uds.app/c/join?ref=x", html)
+        home = self.client.get("/ru/").content.decode()
+        self.assertIn("duo-card-line", home)
+        self.assertIn('href="tel:1234"', home)
+
+    def test_english_has_no_delivery_section(self):
+        html = self.client.get("/en/").content.decode()
+        self.assertNotIn("duo-card", html)
+        self.assertEqual(self.client.get("/en/delivery/").status_code, 404)
+
+    def test_organization_contact_point(self):
+        self.assertContains(self.client.get("/ru/"), '"contactType": "customer service"')
+
+
+@override_settings(SECURE_SSL_REDIRECT=False)
+class TeamAndSeedTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        call_command("seed_demo", verbosity=0)
+
+    def test_leadership_manager_and_staff_stories(self):
+        about = self.client.get("/ru/about/").content.decode()
+        self.assertIn("Руководство", about)
+        self.assertIn("Генеральный директор", about)
+        self.assertIn('class="person"', about)
+        self.assertContains(self.client.get("/ru/stores/store-01/"), "Управляющий магазином")
+        careers = self.client.get("/ru/careers/").content.decode()
+        self.assertIn("Люди Animal Planet", careers)
+        self.assertIn("Не нашли подходящую вакансию", careers)  # vacancies exist → no "no vacancies" text
+        self.assertNotIn("Сейчас открытых вакансий нет", careers)
+
+    def test_demo_settings_filled(self):
+        from core.models import SiteSettings
+        s = SiteSettings.load()
+        self.assertTrue(s.has_app and s.uds_url and s.uds_code and s.short_phone and s.privacy_page_id)
+
+    def test_missing_adds_only_absent_sections(self):
+        from django.core.management.base import CommandError
+        from pages.models import DeliveryPage, LoyaltyPage
+        with self.assertRaises(CommandError):
+            call_command("seed_demo", verbosity=0)
+        for p in [*DeliveryPage.objects.all(), *LoyaltyPage.objects.all()]:
+            p.delete()
+        stores_before = StorePage.objects.count()
+        call_command("seed_demo", "--missing", stdout=open("/dev/null", "w"))
+        self.assertEqual(DeliveryPage.objects.count(), 2)  # RU + UZ
+        self.assertEqual(LoyaltyPage.objects.count(), 2)
+        self.assertEqual(StorePage.objects.count(), stores_before)
+        call_command("seed_demo", "--missing", stdout=open("/dev/null", "w"))  # idempotent
+        self.assertEqual(DeliveryPage.objects.count(), 2)
+
+
+
+class FilterTests(TestCase):
+    def test_accent_last_and_two_digits(self):
+        from core.templatetags.site_tags import accent_last, two_digits
+        self.assertEqual(accent_last("Всё рядом с домом"), 'Всё рядом с <span class="acc">домом</span>')
+        self.assertEqual(accent_last("Одно"), "Одно")
+        self.assertEqual(accent_last("a <b>"), 'a <span class="acc">&lt;b&gt;</span>')  # escaped
+        self.assertEqual(two_digits(3), "03")
+
+
+@override_settings(SECURE_SSL_REDIRECT=False)
+class HomeHeroRenderTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        call_command("seed_demo", verbosity=0)
+
+    def test_hero_quick_links_ticker_and_deals(self):
+        html = self.client.get("/ru/").content.decode()
+        self.assertIn('<span class="acc">домом</span>', html)   # orange last word of the headline
+        self.assertIn('href="/ru/promos/"', html)                # hero button page
+        self.assertIn('class="hero-badge"', html)               # store count badge
+        self.assertIn('class="wrap quick"', html)
+        self.assertIn('class="ticker"', html)
+        self.assertIn('class="deal"', html)
+        self.assertIn("148 000 сум", html)
+        en = self.client.get("/en/").content.decode()
+        self.assertIn('href="/en/partners/"', en)                # EN hero leads to partners
+
+
+@override_settings(SECURE_SSL_REDIRECT=False)
+class GiraffeEggTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        call_command("seed_demo", verbosity=0)
+
+    def test_moods_follow_the_tashkent_calendar(self):
+        import datetime as dt
+        from zoneinfo import ZoneInfo
+        from core.easter import moods
+        tz = ZoneInfo("Asia/Tashkent")
+        self.assertEqual(moods(dt.datetime(2026, 12, 25, 12, tzinfo=tz)), ["newyear"])
+        self.assertEqual(moods(dt.datetime(2027, 1, 10, 23, tzinfo=tz)), ["newyear", "night"])
+        self.assertEqual(moods(dt.datetime(2027, 3, 21, 6, 59, tzinfo=tz)), ["navruz", "night"])
+        self.assertEqual(moods(dt.datetime(2027, 6, 1, 7, tzinfo=tz)), [])
+        self.assertEqual(moods(dt.datetime(2027, 1, 11, 21, 59, tzinfo=tz)), [])
+
+    def test_facts_exist_in_every_language(self):
+        from core.easter import FACTS, facts
+        self.assertGreaterEqual(len(FACTS), 20)
+        self.assertTrue(all(len(f) == 3 and all(f) for f in FACTS))
+        self.assertTrue(any("ʻ" in f for f in facts("uz")))
+        self.assertEqual(facts("xx"), facts("ru"))
+
+    def test_footer_giraffe_with_and_without_code(self):
+        import json, re
+        from core.models import SiteSettings
+        html = self.client.get("/ru/").content.decode()
+        self.assertIn("data-egg", html)
+        self.assertNotIn("data-egg-prize", html)                 # no code set: facts only
+        s = SiteSettings.load()
+        s.egg_code, s.egg_code_note = "JIRAFA10", "−10% на игрушки"
+        s.save()
+        html = self.client.get("/uz/").content.decode()
+        data = json.loads(re.search(r'<script id="egg-data" type="application/json">(.*?)</script>', html).group(1))
+        self.assertEqual((data["code"], data["clicks"]), ("JIRAFA10", 7))
+        self.assertIn("Jirafa", " ".join(data["facts"]))         # facts in the page language
+        self.assertIn("data-egg-prize", html)
+        s.egg_enabled = False
+        s.save()
+        html = self.client.get("/ru/").content.decode()
+        self.assertNotIn("data-egg", html)
+        self.assertNotIn("JIRAFA10", html)
+        self.assertIn('class="egg', html)                        # the giraffe itself stays
+
+
+class MascotTests(TestCase):
+    def test_files_are_valid_and_up_to_date(self):
+        from pathlib import Path
+        from xml.etree import ElementTree
+        from django.conf import settings
+        from core import mascot
+        files = mascot.all_files()
+        self.assertEqual(len(files), 18)  # 9 poses × colour / mono
+        for name, svg in files.items():
+            ElementTree.fromstring(svg)  # well-formed
+            self.assertLess(len(svg), 15 * 1024, name)
+            on_disk = (Path(settings.BASE_DIR) / "static" / "mascot" / name).read_text().strip()
+            self.assertEqual(on_disk, svg, f"{name} is stale: run manage.py make_mascot")
+        rig = (Path(settings.BASE_DIR) / "templates" / "includes" / "mascot_rig.svg").read_text()
+        self.assertIn(mascot.rig(), rig)
+        self.assertIn("currentColor", files["giraffe-idle-mono.svg"])
+
+    def test_rig_css_matches_baked_poses(self):
+        from core import mascot
+        css = mascot.css_rules()
+        self.assertIn(".is-stretch .mascot .m-neck{transform:rotate(7deg) scale(1,1.07)}", css)
+        self.assertIn('rotate(7 300 600)', mascot.svg_transform("neck", "stretch"))
+        self.assertIn(".is-newyear .mascot .m-acc-hat", css)
+
+    @override_settings(SECURE_SSL_REDIRECT=False)
+    def test_footer_and_404_use_the_mascot(self):
+        call_command("seed_demo", verbosity=0)
+        self.assertContains(self.client.get("/ru/"), 'class="mascot"')
+        self.assertContains(self.client.get("/ru/nope/"), "mascot/giraffe-wave.svg", status_code=404)

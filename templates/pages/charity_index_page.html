@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% load wagtailcore_tags wagtailimages_tags site_tags %}
+{% block content %}
+<header class="phead has-media">
+  <div class="wrap phead-grid">
+    <div class="phead-text">
+      {% include "includes/crumbs.html" %}
+      <svg class="charity-mark" aria-hidden="true"><use href="#i-heart"/></svg>
+      <h1>{{ page.title|accent_last }}</h1>
+      {% if page.intro %}<p class="phead-lead">{{ page.intro }}</p>{% endif %}
+      {% if page.donate_url and page.donate_text %}<div class="btns"><a class="pill pill-or pill-lg" href="{{ page.donate_url }}" target="_blank" rel="noopener"><svg class="icon"><use href="#i-heart"/></svg>{{ page.donate_text }}</a></div>{% endif %}
+    </div>
+    <div class="phead-media framed">{% if page.image %}{% srcset_image page.image fill-{720x540,1200x900} format-webp sizes="(max-width: 960px) 100vw, 45vw" alt="" %}{% else %}{% include "includes/ph.html" %}{% endif %}</div>
+  </div>
+</header>
+{% if page.body %}<section class="sec"><div class="wrap">{% include "includes/body.html" with body=page.body %}</div></section>{% endif %}
+{% if projects %}
+<section class="sec sec-cream">
+  <div class="wrap">
+    <div class="sec-head"><h2>{% t "charity_projects" %}</h2></div>
+    <div class="cards cards-3 reveal-group">{% for item in projects %}{% include "includes/charity_card.html" %}{% endfor %}</div>
+  </div>
+</section>
+{% endif %}
+{% if stories %}
+<section class="sec">
+  <div class="wrap">
+    <div class="sec-head"><h2>{% t "charity_stories" %}</h2></div>
+    <div class="cards cards-4 reveal-group">{% for item in stories %}{% include "includes/charity_card.html" %}{% endfor %}</div>
+  </div>
+</section>
+{% endif %}
+{% if events %}
+<section class="sec sec-cream">
+  <div class="wrap">
+    <div class="sec-head"><h2>{% t "charity_events" %}</h2></div>
+    <div class="cards cards-3 reveal-group">{% for item in events %}{% include "includes/charity_card.html" %}{% endfor %}</div>
+  </div>
+</section>
+{% endif %}
+{% endblock %}

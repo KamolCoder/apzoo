@@ -1,0 +1,9 @@
+{% load wagtailcore_tags wagtailimages_tags site_tags %}
+<a class="post{% if lead %} post-lead{% elif row %} post-row{% endif %}" href="{% pageurl item %}">
+  <span class="post-media">{% if item.image %}{% if lead %}{% image item.image fill-960x640 format-webp loading="lazy" alt="" %}{% else %}{% image item.image fill-640x480 format-webp loading="lazy" alt="" %}{% endif %}{% else %}{% include "includes/ph.html" with light=1 %}{% endif %}</span>
+  <span class="post-body">
+    <small>{{ item.date|human_date }}{% if item.kind and item.kind != "news" %} · {{ item.kind_label }}{% endif %}</small>
+    <b>{{ item.title }}</b>
+    {% if item.summary and not row %}<span>{{ item.summary }}</span>{% endif %}
+  </span>
+</a>

@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% load wagtailcore_tags wagtailimages_tags site_tags %}
+{% block content %}
+<header class="phead has-media">
+  <div class="wrap phead-grid">
+    <div class="phead-text">
+      {% include "includes/crumbs.html" %}
+      <span class="cat-ic cat-ic-lg">{% include "catalog/includes/cat_icon.html" with icon=page.icon %}</span>
+      <h1>{{ page.title }}</h1>
+      {% if page.summary %}<p class="phead-lead">{{ page.summary }}</p>{% endif %}
+      {% find_page "stores.StoreIndexPage" as stores_index %}
+      {% if stores_index %}<div class="btns"><a class="pill pill-or pill-lg" href="{% pageurl stores_index %}"><svg class="icon"><use href="#i-pin"/></svg>{% t "find_store" %}</a></div>{% endif %}
+    </div>
+    <div class="phead-media framed">{% if page.image %}{% srcset_image page.image fill-{720x540,1200x900} format-webp sizes="(max-width: 960px) 100vw, 45vw" alt="" %}{% else %}{% include "includes/ph.html" %}{% endif %}</div>
+  </div>
+</header>
+{% if page.subcategory_list %}
+<section class="sec">
+  <div class="wrap">
+    <div class="sec-head"><h2>{% t "in_category" %}</h2></div>
+    <ul class="subcats reveal-group">{% for sc in page.subcategory_list %}<li><small>{{ forloop.counter|two_digits }}</small>{{ sc }}</li>{% endfor %}</ul>
+  </div>
+</section>
+{% endif %}
+{% if page.body %}<section class="sec sec-tight"><div class="wrap">{% include "includes/body.html" with body=page.body %}</div></section>{% endif %}
+{% with brands=page.brands.all %}
+<section class="sec sec-tight">
+  <div class="wrap">
+    {% if brands %}
+    <div class="sec-head"><h2>{% t "brands" %}</h2></div>
+    <div class="brand-grid">{% for b in brands %}<div title="{{ b.name }}">{% if b.logo %}{% image b.logo max-240x96 loading="lazy" alt=b.name %}{% else %}<span>{{ b.name }}</span>{% endif %}</div>{% endfor %}</div>
+    {% endif %}
+    <p class="note">{% t "availability_note" %}</p>
+  </div>
+</section>
+{% endwith %}
+{% if siblings %}
+<section class="sec sec-cream">
+  <div class="wrap">
+    <div class="sec-head"><h2>{% t "other_categories" %}</h2>{% with parent=page.get_parent %}<a class="link" href="{% pageurl parent %}">{% t "all_categories" %}<svg class="icon"><use href="#i-arrow"/></svg></a>{% endwith %}</div>
+    <div class="rows">{% for c in siblings %}{% include "catalog/includes/category_tile.html" %}{% endfor %}</div>
+  </div>
+</section>
+{% endif %}
+{% endblock %}

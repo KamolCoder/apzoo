@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% load static site_tags %}
+{% block seo %}<title>404 — Animal Planet</title><meta name="robots" content="noindex">{% endblock %}
+{% block content %}
+<section class="nf">
+  <div class="wrap nf-grid">
+    <div>
+      <b class="nf-code">4<span class="acc">0</span>4</b>
+      <h1>{% t "page_not_found" %}</h1><p>{% t "page_not_found_text" %}</p>
+      {% home_page as home %}<a class="pill pill-or pill-lg" href="{% if home %}{{ home.url }}{% else %}/{% endif %}">{% t "to_home" %}<svg class="icon"><use href="#i-arrow"/></svg></a>
+    </div>
+    <img class="nf-giraffe" src="{% static 'mascot/giraffe-wave.svg' %}" alt="" width="640" height="1000">
+  </div>
+</section>
+{% endblock %}

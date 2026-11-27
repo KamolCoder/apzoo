@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% load wagtailcore_tags wagtailimages_tags site_tags %}
+{% block content %}
+{% include "includes/page_head.html" %}
+<section class="sec">
+  <div class="wrap">
+    <div class="cats reveal-group">
+      {% for c in categories %}
+      <a class="cat" href="{% pageurl c %}">
+        <span class="cat-media">{% if c.image %}{% image c.image fill-720x560 format-webp loading="lazy" alt="" %}{% else %}{% include "includes/ph.html" %}{% endif %}<span class="cat-ic">{% include "catalog/includes/cat_icon.html" with icon=c.icon %}</span></span>
+        <span class="cat-body">
+          <small>{{ forloop.counter|two_digits }}</small>
+          <h2>{{ c.title }}</h2>
+          {% if c.summary %}<span class="cat-sum">{{ c.summary }}</span>{% endif %}
+          {% if c.subcategory_list %}<span class="tags">{% for sc in c.subcategory_list|slice:":4" %}<span>{{ sc }}</span>{% endfor %}</span>{% endif %}
+        </span>
+      </a>
+      {% endfor %}
+    </div>
+    <p class="note">{% if page.note %}{{ page.note }}{% else %}{% t "availability_note" %}{% endif %}</p>
+  </div>
+</section>
+{% endblock %}

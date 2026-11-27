@@ -1,0 +1,9 @@
+{% load wagtailcore_tags wagtailimages_tags site_tags %}
+<a class="row" href="{% pageurl c %}">
+  <small>{{ forloop.counter|two_digits }}</small>
+  <span class="row-ic">{% include "catalog/includes/cat_icon.html" with icon=c.icon %}</span>
+  <b>{{ c.title }}</b>
+  {% if c.summary %}<span class="row-sum">{{ c.summary }}</span>{% endif %}
+  {% if c.image %}<span class="row-img">{% image c.image fill-240x300 format-webp loading="lazy" alt="" %}</span>{% endif %}
+  <svg class="icon row-arrow"><use href="#i-arrow"/></svg>
+</a>

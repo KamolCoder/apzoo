@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% load wagtailcore_tags site_tags %}
+{% block content %}
+<header class="phead">
+  <div class="wrap phead-grid">
+    <div class="phead-text">
+      {% include "includes/crumbs.html" %}
+      <h1>{{ page.title }}</h1>
+      {% if page.summary %}<p class="phead-lead">{{ page.summary }}</p>{% endif %}
+    </div>
+  </div>
+</header>
+<section class="sec">
+  <div class="wrap side-grid">
+    <div class="prose">
+      {% if not page.is_open %}<div class="alert">{% t "position_closed" %}</div>{% endif %}
+      {% if page.duties %}<h2>{% t "duties" %}</h2>{{ page.duties|richtext }}{% endif %}
+      {% if page.requirements %}<h2>{% t "requirements" %}</h2>{{ page.requirements|richtext }}{% endif %}
+      {% if page.conditions %}<h2>{% t "conditions" %}</h2>{{ page.conditions|richtext }}{% endif %}
+    </div>
+    <aside class="aside">
+      <dl class="facts">
+        {% if page.salary %}<div><dt>{% t "salary" %}</dt><dd class="facts-big">{{ page.salary }}</dd></div>{% endif %}
+        <div><dt>{% t "schedule" %}</dt><dd>{{ page.schedule|default:page.get_employment_display }}</dd></div>
+        {% if page.location %}<div><dt>{% t "location" %}</dt><dd>{{ page.location }}</dd></div>{% endif %}
+      </dl>
+      {% if page.is_open %}<a class="pill pill-or pill-block" href="#form">{% t "apply" %}<svg class="icon"><use href="#i-arrow"/></svg></a>{% endif %}
+      {% with parent=page.get_parent %}<a class="link" href="{% pageurl parent %}"><svg class="icon"><use href="#i-arrow-left"/></svg>{% t "back_to_vacancies" %}</a>{% endwith %}
+    </aside>
+  </div>
+</section>
+{% if page.is_open %}
+<section class="sec sec-cream" id="form">
+  <div class="wrap form-split">
+    <div class="form-side"><h2>{% t "apply" %}</h2><p>{{ page.title }}</p></div>
+    <div class="form-box">{% t "apply" as submit_label %}{% include "includes/lead_form.html" with submit_label=submit_label %}</div>
+  </div>
+</section>
+{% endif %}
+{% endblock %}

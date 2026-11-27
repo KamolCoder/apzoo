@@ -1,0 +1,2 @@
+{% if value.title %}<div class="bhead"><h2>{{ value.title }}</h2></div>{% endif %}
+<ol class="timeline">{% for item in value.items %}<li><b>{{ item.year }}</b><h3>{{ item.title }}</h3>{% if item.text %}<p>{{ item.text }}</p>{% endif %}</li>{% endfor %}</ol>

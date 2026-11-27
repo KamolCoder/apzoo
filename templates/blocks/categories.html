@@ -1,0 +1,10 @@
+{% load wagtailimages_tags %}
+{% if value.title %}<div class="bhead"><h2>{{ value.title }}</h2>{% if value.text %}<p>{{ value.text }}</p>{% endif %}</div>{% endif %}
+<div class="cards cards-4 reveal-group">
+{% for item in value.items %}
+  <div class="card card-tall">
+    <span class="card-media">{% if item.image %}{% image item.image fill-600x700 format-webp loading="lazy" alt="" %}{% else %}{% include "includes/ph.html" %}{% endif %}</span>
+    <span class="card-body"><b>{{ item.title }}</b>{% if item.text %}<span class="card-text">{{ item.text }}</span>{% endif %}</span>
+  </div>
+{% endfor %}
+</div>

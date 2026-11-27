@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% load wagtailcore_tags wagtailimages_tags site_tags %}
+{% block content %}
+<header class="phead phead-article">
+  <div class="wrap article-head">
+    {% include "includes/crumbs.html" %}
+    <p class="meta"><span>{{ page.kind_label }}</span> · {{ page.date|human_date }}{% if page.status_label %} · <b>{{ page.status_label }}</b>{% endif %}</p>
+    <h1>{{ page.title }}</h1>
+    {% if page.summary %}<p class="phead-lead">{{ page.summary }}</p>{% endif %}
+  </div>
+</header>
+<section class="sec sec-article">
+  <div class="wrap">
+    {% if page.image %}<div class="article-cover">{% image page.image fill-1600x900 format-webp alt="" %}</div>{% endif %}
+    <div class="article">
+      {% include "includes/body.html" with body=page.body %}
+      {% with parent=page.get_parent.specific %}
+      <div class="btns article-foot">
+        <a class="pill pill-line" href="{% pageurl parent %}"><svg class="icon"><use href="#i-arrow-left"/></svg>{{ parent.title }}</a>
+        {% if parent.donate_url and parent.donate_text %}<a class="pill pill-or" href="{{ parent.donate_url }}" target="_blank" rel="noopener"><svg class="icon"><use href="#i-heart"/></svg>{{ parent.donate_text }}</a>{% endif %}
+      </div>
+      {% endwith %}
+    </div>
+  </div>
+</section>
+{% endblock %}

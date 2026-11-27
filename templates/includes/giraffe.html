@@ -1,0 +1,19 @@
+{% load site_tags %}
+<div class="egg {% if "night" in moods %}is-sleep{% else %}is-idle{% endif %}{% for m in moods %} is-{{ m }}{% endfor %}"{% if egg %} data-egg data-base="{% if "night" in moods %}is-sleep{% else %}is-idle{% endif %}"{% endif %}>
+  {% if egg %}
+  <div class="egg-bubble" role="status" aria-live="polite" hidden>
+    <button class="egg-x" type="button" aria-label="{% t 'close' %}" data-egg-close><svg class="icon"><use href="#i-close"/></svg></button>
+    <p data-egg-text></p>
+    {% if egg.code %}<div class="egg-prize" data-egg-prize hidden>
+      <b>{% t "egg_found" %}</b>
+      <small>{% t "egg_code" %}</small>
+      <div class="egg-code"><code>{{ egg.code }}</code><button type="button" class="pill pill-or pill-sm" data-egg-copy data-copied="{% t 'copied' %}"><svg class="icon"><use href="#i-copy"/></svg><span>{% t "copy" %}</span></button></div>
+      {% if egg.note %}<small>{{ egg.note }}</small>{% endif %}
+    </div>{% endif %}
+  </div>
+  {{ egg|json_script:"egg-data" }}
+  <button class="egg-btn" type="button" aria-label="{% t 'egg_label' %}">
+  {% else %}<span class="egg-btn" aria-hidden="true">{% endif %}
+    {% include "includes/mascot_rig.svg" %}
+  {% if egg %}</button>{% else %}</span>{% endif %}
+</div>

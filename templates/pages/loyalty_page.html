@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% load wagtailcore_tags wagtailimages_tags site_tags %}
+{% block content %}
+{% with s=settings.core.SiteSettings %}
+<header class="phead has-media">
+  <div class="wrap phead-grid">
+    <div class="phead-text">
+      {% include "includes/crumbs.html" %}
+      <h1>{{ page.title }}</h1>
+      {% if page.intro %}<p class="phead-lead">{{ page.intro }}</p>{% endif %}
+      {% if s.uds_url %}<div class="btns"><a class="pill pill-or pill-lg" href="{{ s.uds_url }}" target="_blank" rel="noopener"><svg class="icon"><use href="#i-gift"/></svg>{% t "join_uds" %}</a></div>{% endif %}
+    </div>
+    <div class="cashback">
+      {% if page.cashback %}<b>{{ page.cashback }}</b>{% endif %}
+      {% if page.cashback_note %}<span>{{ page.cashback_note }}</span>{% endif %}
+      {% if s.uds_code %}
+      <div class="code"><small>{% t "promo_code" %}</small><code>{{ s.uds_code }}</code><button type="button" class="pill pill-dark pill-sm" data-copy="{{ s.uds_code }}" data-copied="{% t 'copied' %}"><svg class="icon"><use href="#i-copy"/></svg>{% t "copy" %}</button></div>
+      {% endif %}
+      {% if s.uds_url %}<div class="qr">{% qr s.uds_url 3 %}<span>{% t "scan_qr" %}</span></div>{% endif %}
+    </div>
+  </div>
+</header>
+{% if page.steps %}
+<section class="sec">
+  <div class="wrap">
+    <div class="sec-head"><h2>{% t "how_to_join" %}</h2></div>
+    {% include "includes/steps.html" with steps=page.steps %}
+  </div>
+</section>
+{% endif %}
+{% if page.rules %}
+<section class="sec sec-cream">
+  <div class="wrap side-grid side-grid-rev">
+    <h2>{% t "rules" %}</h2>
+    <div class="prose">{{ page.rules|richtext }}</div>
+  </div>
+</section>
+{% endif %}
+{% if page.body %}<section class="sec"><div class="wrap">{% include "includes/body.html" with body=page.body %}</div></section>{% endif %}
+{% endwith %}
+{% endblock %}
