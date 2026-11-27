@@ -1,5 +1,5 @@
 {% load site_tags %}
-<div class="egg{% for m in moods %} is-{{ m }}{% endfor %}"{% if egg %} data-egg{% endif %}>
+<div class="egg {% if "night" in moods %}is-sleep{% else %}is-idle{% endif %}{% for m in moods %} is-{{ m }}{% endfor %}"{% if egg %} data-egg data-base="{% if "night" in moods %}is-sleep{% else %}is-idle{% endif %}"{% endif %}>
   {% if egg %}
   <div class="egg-bubble" role="status" aria-live="polite" hidden>
     <button class="egg-x" type="button" aria-label="{% t 'close' %}" data-egg-close><svg class="icon"><use href="#i-close"/></svg></button>
@@ -14,17 +14,6 @@
   {{ egg|json_script:"egg-data" }}
   <button class="egg-btn" type="button" aria-label="{% t 'egg_label' %}">
   {% else %}<span class="egg-btn" aria-hidden="true">{% endif %}
-    <svg class="egg-svg" viewBox="0 -14 64 115" aria-hidden="true">
-      <g class="egg-body"><use href="#i-giraffe"/></g>
-      <g class="egg-hat"><path d="M36 9.5 43 -7 49.5 9.5z" fill="#D7261E"/><rect x="34.5" y="7.5" width="16.5" height="3.6" rx="1.8" fill="#fff"/><circle cx="43" cy="-7" r="2.3" fill="#fff"/></g>
-      <g class="egg-flowers">
-        <g transform="translate(4 95)"><circle r="2.6" fill="#FF5FA2"/><circle r="1" fill="#FFD23F"/></g>
-        <g transform="translate(13 97)"><circle r="2.2" fill="#FFD23F"/><circle r=".9" fill="#F07F1B"/></g>
-        <g transform="translate(29 96)"><circle r="2.4" fill="#B48CFF"/><circle r=".9" fill="#FFD23F"/></g>
-        <g transform="translate(55 95.5)"><circle r="2.6" fill="#FF5FA2"/><circle r="1" fill="#FFD23F"/></g>
-        <path d="M4 97.6v2.4M13 99.2v.8M29 98.4v1.6M55 98.1v1.9" stroke="#3BAA4A" stroke-width="1"/>
-      </g>
-      <g class="egg-zzz"><text x="50" y="1">z</text><text x="53" y="-6">z</text><text x="56" y="-13">Z</text></g>
-    </svg>
+    {% include "includes/mascot_rig.svg" %}
   {% if egg %}</button>{% else %}</span>{% endif %}
 </div>

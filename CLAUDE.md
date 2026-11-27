@@ -57,9 +57,13 @@ hairline rules and numbered lists (`01`, `|two_digits`). Sections alternate blac
 Black sticky header; nav collapses into a full-screen black menu below 1320 px. Giraffe silhouette (`#i-giraffe`) is the
 graphic motif and the placeholder (`includes/ph.html`) until photos. Header/footer use `static/img/logo-wide.png`
 (cropped from the 150 px logo — replace with a big/SVG logo when it arrives). Container 1360 px.
-Footer giraffe (`{% giraffe %}`, `core/easter.py`, `includes/giraffe.html`): click → random animal fact (20, ru/uz/en),
-after 7 clicks → promo code from SiteSettings «Пасхалка с жирафом» (Metrika goal / GA4 event `giraffe_code`); seasonal
-looks by Tashkent time: hat 20 Dec–10 Jan, flowers in March, «Zzz» 22:00–07:00.
+Mascot: flat vector giraffe drawn in code (`core/mascot.py`: parts + pivots, poses = part rotations). `manage.py make_mascot`
+writes `static/mascot/giraffe-<pose>[-mono].svg` (idle, stretch, talk, win, sleep, newyear, navruz, wave, head) and the
+inline rig `templates/includes/mascot_rig.svg` (pose / season classes on an ancestor move the parts via its own CSS);
+rerun it after editing `core/mascot.py` — a test fails on stale files. 404 uses giraffe-wave.svg.
+Footer giraffe (`{% giraffe %}`, `core/easter.py`, `includes/giraffe.html`, the rig): click → stretch + talk pose, random animal fact (20, ru/uz/en),
+after 7 clicks → win + wave pose, promo code from SiteSettings «Пасхалка с жирафом» (Metrika goal / GA4 event `giraffe_code`); seasonal
+looks by Tashkent time: hat + scarf 20 Dec–10 Jan, tulips + wreath in March, sleep pose with «Zzz» 22:00–07:00.
 Motion: `.reveal` / `.reveal-group` fade-in on scroll (only under `html.js`, off with reduced motion), ticker animation.
 Name is «Animal Planet» (Latin) in every language.
 

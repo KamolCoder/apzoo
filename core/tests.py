@@ -529,3 +529,34 @@ class GiraffeEggTests(TestCase):
         self.assertNotIn("data-egg", html)
         self.assertNotIn("JIRAFA10", html)
         self.assertIn('class="egg', html)                        # the giraffe itself stays
+
+
+class MascotTests(TestCase):
+    def test_files_are_valid_and_up_to_date(self):
+        from pathlib import Path
+        from xml.etree import ElementTree
+        from django.conf import settings
+        from core import mascot
+        files = mascot.all_files()
+        self.assertEqual(len(files), 18)  # 9 poses × colour / mono
+        for name, svg in files.items():
+            ElementTree.fromstring(svg)  # well-formed
+            self.assertLess(len(svg), 15 * 1024, name)
+            on_disk = (Path(settings.BASE_DIR) / "static" / "mascot" / name).read_text().strip()
+            self.assertEqual(on_disk, svg, f"{name} is stale: run manage.py make_mascot")
+        rig = (Path(settings.BASE_DIR) / "templates" / "includes" / "mascot_rig.svg").read_text()
+        self.assertIn(mascot.rig(), rig)
+        self.assertIn("currentColor", files["giraffe-idle-mono.svg"])
+
+    def test_rig_css_matches_baked_poses(self):
+        from core import mascot
+        css = mascot.css_rules()
+        self.assertIn(".is-stretch .mascot .m-neck{transform:rotate(7deg) scale(1,1.07)}", css)
+        self.assertIn('rotate(7 300 600)', mascot.svg_transform("neck", "stretch"))
+        self.assertIn(".is-newyear .mascot .m-acc-hat", css)
+
+    @override_settings(SECURE_SSL_REDIRECT=False)
+    def test_footer_and_404_use_the_mascot(self):
+        call_command("seed_demo", verbosity=0)
+        self.assertContains(self.client.get("/ru/"), 'class="mascot"')
+        self.assertContains(self.client.get("/ru/nope/"), "mascot/giraffe-wave.svg", status_code=404)

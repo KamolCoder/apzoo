@@ -55,17 +55,25 @@
     const text = egg.querySelector("[data-egg-text]");
     const prize = egg.querySelector("[data-egg-prize]");
     let clicks = 0, last = -1, found = false, timer = null;
-    const hide = () => { bubble.hidden = true; };
+    const hide = () => { bubble.hidden = true; pose(base); };
     const show = (ms) => { bubble.hidden = false; clearTimeout(timer); if (ms) timer = setTimeout(hide, ms); };
+    const POSES = ["is-idle", "is-stretch", "is-talk", "is-win", "is-sleep", "is-wave"];
+    const base = egg.dataset.base || "is-idle";
+    let poseTimer = null;
+    const pose = (name, back) => {
+      egg.classList.remove(...POSES);
+      egg.classList.add(name);
+      clearTimeout(poseTimer);
+      if (back) poseTimer = setTimeout(() => pose(base), back);
+    };
     egg.querySelector(".egg-btn").addEventListener("click", () => {
       clicks++;
-      egg.classList.remove("is-stretch");
-      void egg.offsetWidth;  // restart the animation
-      egg.classList.add("is-stretch");
       if (data.code && (found || clicks >= data.clicks)) {
         text.hidden = true;
         prize.hidden = false;
         show(0);
+        pose("is-win", 1400);
+        setTimeout(() => { if (!bubble.hidden) pose("is-wave"); }, 1400);
         if (!found) {
           found = true;
           if (window.ym && data.ym) window.ym(+data.ym, "reachGoal", "giraffe_code");
@@ -78,6 +86,8 @@
       last = i;
       text.textContent = data.facts[i];
       show(9000);
+      pose("is-stretch");
+      poseTimer = setTimeout(() => pose("is-talk", 8600), 450);
     });
     egg.querySelector("[data-egg-close]").addEventListener("click", hide);
     document.addEventListener("keydown", (e) => { if (e.key === "Escape") hide(); });
