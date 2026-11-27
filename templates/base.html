@@ -1,0 +1,130 @@
+{% load static wagtailcore_tags wagtailimages_tags wagtailuserbar site_tags %}<!DOCTYPE html>
+{% lang as cur_lang %}{% home_page as home %}{% find_page "stores.StoreIndexPage" as stores_index %}{% find_page "pages.CareersPage" as careers %}{% find_page "pages.PartnersPage" as partners %}{% find_page "pages.ContactPage" as contact_page %}{% find_page "pages.PromoIndexPage" as promo_index %}{% find_page "pages.NewsIndexPage" as news_index %}{% find_page "catalog.CategoryIndexPage" as catalog_index %}{% find_page "pages.CharityIndexPage" as charity_index %}{% find_page "pages.DeliveryPage" as delivery_page %}{% find_page "pages.LoyaltyPage" as loyalty_page %}
+<html lang="{{ cur_lang }}">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script>document.documentElement.classList.add("js")</script>
+{% block seo %}{% seo_head %}{% endblock %}
+<meta name="theme-color" content="#000000">
+<link rel="icon" href="/favicon.ico" sizes="48x48">
+<link rel="icon" type="image/png" sizes="96x96" href="{% static 'icons/favicon-96.png' %}">
+<link rel="icon" type="image/png" sizes="192x192" href="{% static 'icons/favicon-192.png' %}">
+<link rel="apple-touch-icon" href="{% static 'icons/apple-touch-icon.png' %}">
+<link rel="manifest" href="/site.webmanifest">
+<link rel="preload" href="{% static 'fonts/unbounded-cyrillic-700-normal.woff2' %}" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="{% static 'css/fonts.css' %}">
+<link rel="stylesheet" href="{% static 'css/site.css' %}">
+{% block extra_head %}{% endblock %}
+</head>
+<body class="{% block body_class %}{% endblock %}">
+{% include "includes/icons.html" %}
+<a class="skip" href="#main">{% t "skip" %}</a>
+{% language_links as langs %}{% menu_items as items %}{% with s=settings.core.SiteSettings %}
+
+<header class="hdr">
+  <div class="wrap hdr-row">
+    <a class="hdr-logo" href="{% if home %}{% pageurl home %}{% else %}/{% endif %}"><img src="{% static 'img/logo-wide.png' %}" alt="Animal Planet" width="128" height="56"></a>
+    <nav class="hdr-nav" aria-label="Main">
+      {% for item in items %}<a href="{% pageurl item %}"{% if page|in_section:item %} class="is-active" aria-current="page"{% endif %}>{{ item.title }}</a>{% endfor %}
+    </nav>
+    <div class="hdr-end">
+      <a class="hdr-phone" href="tel:{{ s.phone_href }}"><small>{% t "call_center" %}{% if s.phone_hours %} · {{ s.phone_hours }}{% endif %}</small>{{ s.phone }}</a>
+      <nav class="langs" aria-label="Language">{% for l in langs %}<a href="{{ l.url }}" hreflang="{{ l.code }}" lang="{{ l.code }}" title="{{ l.name }}"{% if l.active %} class="is-active" aria-current="true"{% endif %}>{{ l.label }}</a>{% endfor %}</nav>
+      {% if stores_index %}<a class="pill pill-or pill-sm hdr-cta" href="{% pageurl stores_index %}"><svg class="icon"><use href="#i-pin"/></svg>{% t "find_store" %}</a>{% endif %}
+      <a class="hdr-icon" href="tel:{{ s.short_phone|default:s.phone_href }}" aria-label="{% t 'call' %}"><svg class="icon"><use href="#i-phone"/></svg></a>
+      <button class="hdr-burger" type="button" aria-controls="menu" aria-expanded="false" data-open-nav><span>{% t "menu" %}</span><i aria-hidden="true"></i></button>
+    </div>
+  </div>
+</header>
+
+<div class="menu" id="menu" aria-hidden="true">
+  <div class="wrap menu-top">
+    <a class="hdr-logo" href="{% if home %}{% pageurl home %}{% else %}/{% endif %}"><img src="{% static 'img/logo-wide.png' %}" alt="Animal Planet" width="128" height="56"></a>
+    <button class="hdr-burger is-x" type="button" data-close-nav><span>{% t "close" %}</span><i aria-hidden="true"></i></button>
+  </div>
+  <div class="wrap menu-body">
+    <nav class="menu-main" aria-label="{% t 'menu' %}">
+      {% for item in items %}<a href="{% pageurl item %}"><small>{{ forloop.counter|two_digits }}</small>{{ item.title }}</a>{% endfor %}
+    </nav>
+    <div class="menu-side">
+      <div class="menu-links">
+        {% if delivery_page %}<a href="{% pageurl delivery_page %}">{{ delivery_page.title }}</a>{% endif %}
+        {% if loyalty_page %}<a href="{% pageurl loyalty_page %}">{{ loyalty_page.title }}</a>{% endif %}
+        {% if partners and not partners.show_in_menus %}<a href="{% pageurl partners %}">{{ partners.title }}</a>{% endif %}
+        {% if careers and not careers.show_in_menus %}<a href="{% pageurl careers %}">{{ careers.title }}</a>{% endif %}
+        {% if contact_page and not contact_page.show_in_menus %}<a href="{% pageurl contact_page %}">{{ contact_page.title }}</a>{% endif %}
+      </div>
+      <a class="menu-phone" href="tel:{{ s.phone_href }}">{{ s.phone }}</a>
+      {% if stores_index %}<a class="pill pill-or" href="{% pageurl stores_index %}"><svg class="icon"><use href="#i-pin"/></svg>{% t "find_store" %}</a>{% endif %}
+      <nav class="langs" aria-label="Language">{% for l in langs %}<a href="{{ l.url }}" lang="{{ l.code }}"{% if l.active %} class="is-active"{% endif %}>{{ l.label }}</a>{% endfor %}</nav>
+    </div>
+  </div>
+</div>
+
+<main id="main">
+{% block content %}{% endblock %}
+</main>
+
+<footer class="ftr">
+  <div class="wrap">
+    {% if stores_index %}
+    <a class="ftr-cta" href="{% pageurl stores_index %}">
+      <span>{% t "stores_cta_title" %}</span>
+      <span class="ftr-cta-arrow"><svg class="icon"><use href="#i-arrow"/></svg></span>
+    </a>
+    {% endif %}
+    <div class="ftr-grid">
+      <div class="ftr-brand">
+        <img src="{% static 'img/logo-wide.png' %}" alt="Animal Planet" width="192" height="84" loading="lazy">
+        {% if home.search_description %}<p>{{ home.search_description }}</p>{% endif %}
+        <div class="socials">
+          {% if s.telegram %}<a href="https://t.me/{{ s.telegram }}" target="_blank" rel="noopener" aria-label="Telegram"><svg class="icon"><use href="#i-telegram"/></svg></a>{% endif %}
+          {% if s.instagram %}<a href="https://instagram.com/{{ s.instagram }}" target="_blank" rel="noopener" aria-label="Instagram"><svg class="icon"><use href="#i-instagram"/></svg></a>{% endif %}
+          {% if s.facebook %}<a href="{{ s.facebook }}" target="_blank" rel="noopener" aria-label="Facebook"><svg class="icon"><use href="#i-facebook"/></svg></a>{% endif %}
+          {% if s.youtube %}<a href="{{ s.youtube }}" target="_blank" rel="noopener" aria-label="YouTube"><svg class="icon"><use href="#i-youtube"/></svg></a>{% endif %}
+        </div>
+      </div>
+      <div>
+        <h4>{% t "for_customers" %}</h4>
+        <ul>
+          {% if stores_index %}<li><a href="{% pageurl stores_index %}">{{ stores_index.title }}</a></li>{% endif %}
+          {% if catalog_index %}<li><a href="{% pageurl catalog_index %}">{{ catalog_index.title }}</a></li>{% endif %}
+          {% if promo_index %}<li><a href="{% pageurl promo_index %}">{{ promo_index.title }}</a></li>{% endif %}
+          {% if delivery_page %}<li><a href="{% pageurl delivery_page %}">{{ delivery_page.title }}</a></li>{% endif %}
+          {% if loyalty_page %}<li><a href="{% pageurl loyalty_page %}">{{ loyalty_page.title }}</a></li>{% endif %}
+        </ul>
+      </div>
+      <div>
+        <h4>{% t "company" %}</h4>
+        <ul>
+          {% for item in items %}{% if item|page_type == "StandardPage" %}<li><a href="{% pageurl item %}">{{ item.title }}</a></li>{% endif %}{% endfor %}
+          {% if news_index %}<li><a href="{% pageurl news_index %}">{{ news_index.title }}</a></li>{% endif %}
+          {% if charity_index %}<li><a href="{% pageurl charity_index %}">{{ charity_index.title }}</a></li>{% endif %}
+          {% if careers %}<li><a href="{% pageurl careers %}">{{ careers.title }}</a></li>{% endif %}
+          {% if partners %}<li><a href="{% pageurl partners %}">{{ partners.title }}</a></li>{% endif %}
+        </ul>
+      </div>
+      <div class="ftr-contacts">
+        <h4>{% t "contacts" %}</h4>
+        <a class="ftr-phone" href="tel:{{ s.phone_href }}">{{ s.phone }}</a>
+        {% if s.short_phone %}<p>{% t "short_number" %} <a href="tel:{{ s.short_phone }}"><b>{{ s.short_phone }}</b></a>{% if s.phone_hours %} · {% t "daily" %} {{ s.phone_hours }}{% endif %}</p>{% endif %}
+        <p><a href="mailto:{{ s.email }}">{{ s.email }}</a><br><a href="mailto:{{ s.partners_email }}">{{ s.partners_email }}</a></p>
+        {% if s.address %}<p>{{ s.address }}</p>{% endif %}
+        {% if contact_page %}<a class="link" href="{% pageurl contact_page %}">{{ contact_page.title }}<svg class="icon"><use href="#i-arrow"/></svg></a>{% endif %}
+      </div>
+    </div>
+    <div class="ftr-bottom">
+      <span>© {% now "Y" %} {{ s.legal_name }}{% if s.tax_id %} · ИНН {{ s.tax_id }}{% endif %}. {% t "all_rights" %}</span>
+      {% with pp=s.privacy_page %}{% if pp and pp.localized.live %}<a href="{% pageurl pp.localized %}">{{ pp.localized.title }}</a>{% endif %}{% endwith %}
+    </div>
+  </div>
+  <svg class="ftr-giraffe" aria-hidden="true"><use href="#i-giraffe"/></svg>
+</footer>
+{% endwith %}
+{% wagtailuserbar "bottom-left" %}
+{% analytics %}
+<script src="{% static 'js/site.js' %}" defer></script>
+{% block extra_js %}{% endblock %}
+</body>
+</html>

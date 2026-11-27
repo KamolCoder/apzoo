@@ -1,0 +1,21 @@
+# Everything that must survive a rebuild lives on the host in AP_DATA_DIR (default /srv/animalplanet):
+#   data/      SQLite database + data/backups/
+#   media/     uploaded images and documents
+#   private/   CVs (never served by nginx)
+services:
+  web:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    # low-traffic site: keep it small so it never competes with other services on the server
+    mem_limit: 384m
+    cpus: 0.5
+    logging:
+      driver: json-file
+      options: {max-size: "10m", max-file: "3"}
+    ports:
+      - "127.0.0.1:8031:8000"
+    volumes:
+      - ${AP_DATA_DIR:-/srv/animalplanet}/data:/app/data
+      - ${AP_DATA_DIR:-/srv/animalplanet}/media:/app/media
+      - ${AP_DATA_DIR:-/srv/animalplanet}/private:/app/private

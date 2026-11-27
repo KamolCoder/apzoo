@@ -1,0 +1,224 @@
+{% extends "base.html" %}
+{% load static wagtailcore_tags wagtailimages_tags site_tags %}
+{% block extra_head %}{% if page.show_store_finder and stores_data %}<link rel="stylesheet" href="{% static 'vendor/leaflet/leaflet.css' %}">{% endif %}{% endblock %}
+{% block body_class %}is-home{% endblock %}
+{% block content %}
+{% find_page "pages.CareersPage" as careers %}{% find_page "pages.PartnersPage" as partners %}
+
+{# 1. hero: big type + photo collage + quick links #}
+<section class="hero">
+  <div class="wrap hero-grid">
+    <div class="hero-text">
+      <h1>{{ page.hero_title|default:page.title|accent_last }}</h1>
+      {% if page.hero_text %}<p>{{ page.hero_text }}</p>{% endif %}
+      <div class="btns">
+        {% if page.hero_button_page and page.hero_button_text %}<a class="pill pill-or pill-lg" href="{% pageurl page.hero_button_page.localized %}">{{ page.hero_button_text }}<svg class="icon"><use href="#i-arrow"/></svg></a>{% endif %}
+        {% if store_index %}<a class="pill pill-line-w pill-lg" href="{% pageurl store_index %}"><svg class="icon"><use href="#i-pin"/></svg>{% t "find_store" %}</a>{% endif %}
+      </div>
+    </div>
+    <div class="hero-media{% if page.hero_photos|length > 1 %} is-collage{% endif %}">
+      <svg class="hero-giraffe" aria-hidden="true"><use href="#i-giraffe"/></svg>
+      {% for block in page.hero_photos %}
+      <figure class="hero-ph hero-ph-{{ forloop.counter }}">{% if forloop.first %}{% srcset_image block.value fill-{560x700,900x1120} format-webp sizes="(max-width: 900px) 70vw, 34vw" fetchpriority="high" alt="" %}{% else %}{% image block.value fill-480x480 format-webp loading="lazy" alt="" %}{% endif %}</figure>
+      {% empty %}
+      <figure class="hero-ph hero-ph-1">{% include "includes/ph.html" %}</figure>
+      {% endfor %}
+      {% if store_count %}<div class="hero-badge"><b>{{ store_count }}</b><span>{% t "stores_in_city" %}</span></div>{% endif %}
+    </div>
+  </div>
+  <nav class="wrap quick" aria-label="Quick links">
+    {% if store_index %}<a href="{% pageurl store_index %}"><small>01</small><b>{{ store_index.title }}</b><span>{{ store_count }} {% t "stores_in_tashkent" %}</span><svg class="icon"><use href="#i-arrow"/></svg></a>{% endif %}
+    {% if delivery_page %}<a href="{% pageurl delivery_page %}"><small>02</small><b>{{ delivery_page.title }}</b><span>{% t "delivery_card_title" %}</span><svg class="icon"><use href="#i-arrow"/></svg></a>{% elif promo_index %}<a href="{% pageurl promo_index %}"><small>02</small><b>{{ promo_index.title }}</b><span>{% t "quick_promos" %}</span><svg class="icon"><use href="#i-arrow"/></svg></a>{% endif %}
+    {% if careers %}<a href="{% pageurl careers %}"><small>03</small><b>{{ careers.title }}</b><span>{% t "quick_careers" %}</span><svg class="icon"><use href="#i-arrow"/></svg></a>{% endif %}
+    {% if partners %}<a href="{% pageurl partners %}"><small>04</small><b>{{ partners.title }}</b><span>{% t "quick_partners" %}</span><svg class="icon"><use href="#i-arrow"/></svg></a>{% endif %}
+  </nav>
+</section>
+
+{# running line: catalogue sections #}
+{% if categories %}
+<div class="ticker" aria-hidden="true"><div class="ticker-track">{% for n in "12" %}<span>{% for c in categories %}{{ c.title }}<svg><use href="#i-giraffe"/></svg>{% endfor %}</span>{% endfor %}</div></div>
+{% endif %}
+
+{# 2. deals of the week #}
+{% if page.show_promos and promos %}
+<section class="sec sec-cream">
+  <div class="wrap">
+    <div class="sec-head">
+      <h2>{% t "deals_title" %}</h2>
+      {% if promo_index %}<a class="link" href="{% pageurl promo_index %}">{% t "all_promos" %}<svg class="icon"><use href="#i-arrow"/></svg></a>{% endif %}
+    </div>
+    <div class="deals hscroll reveal-group">{% for promo in promos %}{% include "includes/promo_tag.html" %}{% endfor %}</div>
+  </div>
+</section>
+{% endif %}
+
+{# 3. brand in short + numbers #}
+{% if page.intro_title or stats_list %}
+<section class="sec">
+  <div class="wrap">
+    <div class="intro reveal">
+      {% if page.intro_title %}<h2 class="h-xl">{{ page.intro_title|accent_last }}</h2>{% endif %}
+      {% if page.intro_text %}<p class="lead">{{ page.intro_text }}</p>{% endif %}
+    </div>
+    {% if stats_list %}<div class="nums reveal-group">{% for item in stats_list %}<div><b>{{ item.value }}</b><span>{{ item.label }}</span></div>{% endfor %}</div>{% endif %}
+  </div>
+</section>
+{% endif %}
+
+{# 4. categories: numbered rows #}
+{% if page.show_categories and categories %}
+<section class="sec sec-line">
+  <div class="wrap">
+    <div class="sec-head">
+      <div><h2>{% t "categories_title" %}</h2>{% if category_index.intro %}<p>{{ category_index.intro }}</p>{% endif %}</div>
+      <a class="link" href="{% pageurl category_index %}">{% t "all_categories" %}<svg class="icon"><use href="#i-arrow"/></svg></a>
+    </div>
+    <div class="rows reveal-group">{% for c in categories %}{% include "catalog/includes/category_tile.html" %}{% endfor %}</div>
+  </div>
+</section>
+{% endif %}
+
+{# 5. about + advantages #}
+{% if page.about_title or page.advantages %}
+<section class="sec sec-cream">
+  <div class="wrap">
+    {% if page.about_title %}
+    <div class="split reveal">
+      <div class="split-media framed">{% if page.about_image %}{% srcset_image page.about_image fill-{720x600,1200x1000} format-webp sizes="(max-width: 960px) 100vw, 50vw" loading="lazy" %}{% else %}{% include "includes/ph.html" %}{% endif %}</div>
+      <div class="split-text">
+        <h2>{{ page.about_title }}</h2>
+        {% if page.about_text %}<div class="prose">{{ page.about_text|richtext }}</div>{% endif %}
+        {% if page.about_page %}<a class="pill pill-dark" href="{% pageurl page.about_page.localized %}">{% t "more" %}<svg class="icon"><use href="#i-arrow"/></svg></a>{% endif %}
+      </div>
+    </div>
+    {% endif %}
+    {% if page.advantages %}
+    <div class="pluses reveal-group">
+      {% for block in page.advantages %}{% with a=block.value %}
+      <div class="plus"><small>{{ forloop.counter|two_digits }}</small><svg class="icon"><use href="#i-{{ a.icon }}"/></svg><h3>{{ a.title }}</h3>{% if a.text %}<p>{{ a.text }}</p>{% endif %}</div>
+      {% endwith %}{% endfor %}
+    </div>
+    {% endif %}
+  </div>
+</section>
+{% endif %}
+
+{# 6. stores: count + search + map #}
+{% if page.show_store_finder and store_index %}
+<section class="sec sec-black">
+  <div class="wrap stores-teaser">
+    <div class="stores-teaser-text">
+      <div class="big-num"><b>{{ store_count }}</b><span>{% t "stores_word" %}{% if districts %} · {{ districts|length }} {% t "districts_word" %}{% endif %}</span></div>
+      <h2>{% t "stores_title" %}</h2>
+      <p>{% t "stores_text" %}</p>
+      <form class="search" action="{% pageurl store_index %}" method="get" role="search">
+        <label><svg class="icon"><use href="#i-search"/></svg><span class="sr-only">{% t "search" %}</span><input type="search" name="q" placeholder="{% t 'search_placeholder' %}" autocomplete="off"></label>
+        <button class="pill pill-or" type="submit">{% t "search" %}</button>
+      </form>
+      <div class="btns">
+        <a class="pill pill-line-w" href="{% pageurl store_index %}?near=1"><svg class="icon"><use href="#i-nav"/></svg>{% t "near_me" %}</a>
+        <a class="link link-w" href="{% pageurl store_index %}">{% t "all_stores_list" %}<svg class="icon"><use href="#i-arrow"/></svg></a>
+      </div>
+    </div>
+    {% if stores_data %}<div class="map-box" role="region" aria-label="{% t 'store_map' %}" data-overview-map data-src="stores-data" data-more="{% t 'more' %}" data-route="{% t 'route' %}"></div>{% endif %}
+  </div>
+</section>
+{% endif %}
+
+{# 7. delivery + UDS #}
+{% if page.show_services and delivery_page or page.show_services and loyalty_page %}
+<section class="sec">
+  <div class="wrap">
+    <div class="sec-head"><h2>{% t "services_title" %}</h2></div>
+    <div class="duo reveal-group">
+      {% if delivery_page %}
+      <div class="duo-card duo-card-line">
+        <svg class="icon duo-ic"><use href="#i-truck"/></svg>
+        <h3>{% t "delivery_card_title" %}</h3>
+        <p>{% t "delivery_card_text" %}</p>
+        {% include "includes/app_buttons.html" %}
+        <a class="link" href="{% pageurl delivery_page %}">{{ delivery_page.title }}<svg class="icon"><use href="#i-arrow"/></svg></a>
+        {% if delivery_page.image %}<div class="duo-media">{% image delivery_page.image fill-480x480 format-webp loading="lazy" alt="" %}</div>{% endif %}
+      </div>
+      {% endif %}
+      {% if loyalty_page %}
+      <div class="duo-card duo-card-or">
+        <svg class="icon duo-ic"><use href="#i-gift"/></svg>
+        <h3>{% t "loyalty_card_title" %}</h3>
+        {% if loyalty_page.cashback %}<div class="duo-big"><b>{{ loyalty_page.cashback }}</b>{% if loyalty_page.cashback_note %}<span>{{ loyalty_page.cashback_note }}</span>{% endif %}</div>{% else %}<p>{% t "loyalty_card_text" %}</p>{% endif %}
+        <div class="btns">
+          {% if settings.core.SiteSettings.uds_url %}<a class="pill pill-dark" href="{{ settings.core.SiteSettings.uds_url }}" target="_blank" rel="noopener">{% t "join_uds" %}</a>{% endif %}
+          <a class="pill pill-line" href="{% pageurl loyalty_page %}">{% t "more" %}</a>
+        </div>
+        {% if loyalty_page.image %}<div class="duo-media">{% image loyalty_page.image fill-480x480 format-webp loading="lazy" alt="" %}</div>{% endif %}
+      </div>
+      {% endif %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+{# 8. news: one lead story + list #}
+{% if page.show_news and news %}
+<section class="sec sec-line">
+  <div class="wrap">
+    <div class="sec-head">
+      <h2>{% t "news" %}</h2>
+      {% if news_index %}<a class="link" href="{% pageurl news_index %}">{% t "all_news" %}<svg class="icon"><use href="#i-arrow"/></svg></a>{% endif %}
+    </div>
+    <div class="press reveal-group">
+      {% for item in news %}{% if forloop.first %}{% include "includes/news_card.html" with lead=1 %}{% else %}{% include "includes/news_card.html" with row=1 %}{% endif %}{% endfor %}
+    </div>
+  </div>
+</section>
+{% endif %}
+
+{# 9. charity #}
+{% if page.show_charity and charity_index %}
+<section class="sec sec-black">
+  <div class="wrap charity">
+    <div class="charity-text reveal">
+      <svg class="charity-mark" aria-hidden="true"><use href="#i-heart"/></svg>
+      <h2>{{ charity_index.title|accent_last }}</h2>
+      {% if charity_index.intro %}<p>{{ charity_index.intro }}</p>{% endif %}
+      <div class="btns">
+        <a class="pill pill-or" href="{% pageurl charity_index %}">{% t "charity_more" %}<svg class="icon"><use href="#i-arrow"/></svg></a>
+        {% if charity_index.donate_url and charity_index.donate_text %}<a class="pill pill-line-w" href="{{ charity_index.donate_url }}" target="_blank" rel="noopener">{{ charity_index.donate_text }}</a>{% endif %}
+      </div>
+    </div>
+    {% if charity_items %}
+    <div class="charity-items reveal-group">
+      {% for item in charity_items %}
+      <a class="tile" href="{% pageurl item %}">
+        <span class="tile-media">{% if item.image %}{% image item.image fill-480x600 format-webp loading="lazy" alt="" %}{% else %}{% include "includes/ph.html" %}{% endif %}</span>
+        <small>{{ item.kind_label }}{% if item.status_label %} · {{ item.status_label }}{% endif %}</small>
+        <b>{{ item.title }}</b>
+      </a>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+</section>
+{% endif %}
+
+{# 10. brands #}
+{% if page.show_brands and brands %}
+<section class="sec">
+  <div class="wrap">
+    <div class="sec-head"><h2>{% t "brands_title" %}</h2>{% if partners %}<a class="link" href="{% pageurl partners %}">{{ partners.title }}<svg class="icon"><use href="#i-arrow"/></svg></a>{% endif %}</div>
+    <div class="brand-grid reveal-group">{% for b in brands %}<div title="{{ b.name }}">{% if b.logo %}{% image b.logo max-240x96 loading="lazy" alt=b.name %}{% else %}<span>{{ b.name }}</span>{% endif %}</div>{% endfor %}</div>
+  </div>
+</section>
+{% endif %}
+
+{% if page.body %}
+<section class="sec sec-tight">
+  <div class="wrap">{% include "includes/body.html" with body=page.body %}</div>
+</section>
+{% endif %}
+{% if page.show_store_finder and stores_data %}{{ stores_data|json_script:"stores-data" }}{% endif %}
+{% endblock %}
+{% block extra_js %}{% if page.show_store_finder and stores_data %}
+<script>window.MAP_TILES = {url: "{{ map_tile_url|escapejs }}", attribution: "{{ map_tile_attribution|escapejs }}"};</script>
+<script src="{% static 'vendor/leaflet/leaflet.js' %}" defer></script>
+<script src="{% static 'js/stores.js' %}" defer></script>{% endif %}{% endblock %}
