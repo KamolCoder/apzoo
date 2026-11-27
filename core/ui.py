@@ -247,6 +247,9 @@ STRINGS: dict[str, dict[str, str]] = {
                          "en": "The nearest Animal Planet is a few blocks away"},
     "stores_in_city": {"ru": "магазинов по городу", "uz": "ta doʻkon shahar boʻylab", "en": "stores across the city"},
     "cashback": {"ru": "кешбэк", "uz": "keshbek", "en": "cashback"},
+    "egg_label": {"ru": "Погладить жирафа", "uz": "Jirafani silash", "en": "Pet the giraffe"},
+    "egg_found": {"ru": "Вы нашли пасхалку!", "uz": "Siz sirni topdingiz!", "en": "You found the easter egg!"},
+    "egg_code": {"ru": "Ваш промокод", "uz": "Promokodingiz", "en": "Your promo code"},
 }
 
 LANGS = ("ru", "uz", "en")

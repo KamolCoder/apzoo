@@ -177,3 +177,16 @@ def accent_last(text):
 def two_digits(n):
     """1 → 01 for numbered lists."""
     return f"{int(n):02d}"
+
+
+@register.inclusion_tag("includes/giraffe.html")
+def giraffe():
+    """Footer giraffe: seasonal look always; facts + promo code when the egg is on in SiteSettings."""
+    from core import easter
+    from core.models import SiteSettings
+    s = SiteSettings.load()
+    data = None
+    if s.egg_enabled:
+        data = {"facts": easter.facts(current_lang()), "clicks": easter.EGG_CLICKS,
+                "code": s.egg_code, "note": s.egg_code_note, "ym": s.yandex_metrika_id}
+    return {"moods": easter.moods(), "egg": data}

@@ -46,4 +46,49 @@
       setTimeout(() => { btn.lastChild.textContent = label; }, 1800);
     } catch (e) { /* clipboard blocked: the code is visible anyway */ }
   }));
+
+  // footer giraffe: a fact per click, the promo code after N clicks (core/easter.py)
+  const egg = document.querySelector("[data-egg]");
+  if (egg) {
+    const data = JSON.parse(document.getElementById("egg-data").textContent);
+    const bubble = egg.querySelector(".egg-bubble");
+    const text = egg.querySelector("[data-egg-text]");
+    const prize = egg.querySelector("[data-egg-prize]");
+    let clicks = 0, last = -1, found = false, timer = null;
+    const hide = () => { bubble.hidden = true; };
+    const show = (ms) => { bubble.hidden = false; clearTimeout(timer); if (ms) timer = setTimeout(hide, ms); };
+    egg.querySelector(".egg-btn").addEventListener("click", () => {
+      clicks++;
+      egg.classList.remove("is-stretch");
+      void egg.offsetWidth;  // restart the animation
+      egg.classList.add("is-stretch");
+      if (data.code && (found || clicks >= data.clicks)) {
+        text.hidden = true;
+        prize.hidden = false;
+        show(0);
+        if (!found) {
+          found = true;
+          if (window.ym && data.ym) window.ym(+data.ym, "reachGoal", "giraffe_code");
+          if (window.gtag) window.gtag("event", "giraffe_code");
+        }
+        return;
+      }
+      let i;
+      do { i = Math.floor(Math.random() * data.facts.length); } while (i === last && data.facts.length > 1);
+      last = i;
+      text.textContent = data.facts[i];
+      show(9000);
+    });
+    egg.querySelector("[data-egg-close]").addEventListener("click", hide);
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape") hide(); });
+    egg.querySelector("[data-egg-copy]")?.addEventListener("click", async (e) => {
+      const btn = e.currentTarget, label = btn.querySelector("span");
+      try {
+        await navigator.clipboard.writeText(data.code);
+        const was = label.textContent;
+        label.textContent = btn.dataset.copied;
+        setTimeout(() => { label.textContent = was; }, 1800);
+      } catch (err) { /* clipboard blocked: the code is on screen */ }
+    });
+  }
 })();

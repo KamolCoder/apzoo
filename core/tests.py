@@ -483,3 +483,49 @@ class HomeHeroRenderTests(TestCase):
         self.assertIn("148 000 сум", html)
         en = self.client.get("/en/").content.decode()
         self.assertIn('href="/en/partners/"', en)                # EN hero leads to partners
+
+
+@override_settings(SECURE_SSL_REDIRECT=False)
+class GiraffeEggTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        call_command("seed_demo", verbosity=0)
+
+    def test_moods_follow_the_tashkent_calendar(self):
+        import datetime as dt
+        from zoneinfo import ZoneInfo
+        from core.easter import moods
+        tz = ZoneInfo("Asia/Tashkent")
+        self.assertEqual(moods(dt.datetime(2026, 12, 25, 12, tzinfo=tz)), ["newyear"])
+        self.assertEqual(moods(dt.datetime(2027, 1, 10, 23, tzinfo=tz)), ["newyear", "night"])
+        self.assertEqual(moods(dt.datetime(2027, 3, 21, 6, 59, tzinfo=tz)), ["navruz", "night"])
+        self.assertEqual(moods(dt.datetime(2027, 6, 1, 7, tzinfo=tz)), [])
+        self.assertEqual(moods(dt.datetime(2027, 1, 11, 21, 59, tzinfo=tz)), [])
+
+    def test_facts_exist_in_every_language(self):
+        from core.easter import FACTS, facts
+        self.assertGreaterEqual(len(FACTS), 20)
+        self.assertTrue(all(len(f) == 3 and all(f) for f in FACTS))
+        self.assertTrue(any("ʻ" in f for f in facts("uz")))
+        self.assertEqual(facts("xx"), facts("ru"))
+
+    def test_footer_giraffe_with_and_without_code(self):
+        import json, re
+        from core.models import SiteSettings
+        html = self.client.get("/ru/").content.decode()
+        self.assertIn("data-egg", html)
+        self.assertNotIn("data-egg-prize", html)                 # no code set: facts only
+        s = SiteSettings.load()
+        s.egg_code, s.egg_code_note = "JIRAFA10", "−10% на игрушки"
+        s.save()
+        html = self.client.get("/uz/").content.decode()
+        data = json.loads(re.search(r'<script id="egg-data" type="application/json">(.*?)</script>', html).group(1))
+        self.assertEqual((data["code"], data["clicks"]), ("JIRAFA10", 7))
+        self.assertIn("Jirafa", " ".join(data["facts"]))         # facts in the page language
+        self.assertIn("data-egg-prize", html)
+        s.egg_enabled = False
+        s.save()
+        html = self.client.get("/ru/").content.decode()
+        self.assertNotIn("data-egg", html)
+        self.assertNotIn("JIRAFA10", html)
+        self.assertIn('class="egg', html)                        # the giraffe itself stays

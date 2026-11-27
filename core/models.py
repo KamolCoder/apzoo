@@ -34,6 +34,13 @@ class SiteSettings(BaseGenericSetting):
     yandex_metrika_id = models.CharField("Яндекс.Метрика: номер счётчика", max_length=20, blank=True)
     ga4_id = models.CharField("Google Analytics 4: ID потока", max_length=20, blank=True, help_text="Вида G-XXXXXXXXXX")
 
+    egg_enabled = models.BooleanField("Пасхалка: жираф в подвале отвечает на клики", default=True,
+                                      help_text="Клик — факт о животных; после 7 кликов — промокод (если указан)")
+    egg_code = models.CharField("Пасхалка: промокод", max_length=32, blank=True,
+                                help_text="Пусто — только факты. Код виден в исходнике страницы: давайте небольшую скидку")
+    egg_code_note = models.CharField("Пасхалка: условия промокода", max_length=120, blank=True,
+                                     help_text="Напр. «−10% на игрушки до 31 декабря, покажите код на кассе»")
+
     legal_name = models.CharField("Юридическое название", max_length=200, default="ООО «ANIMAL PLANET»")
     tax_id = models.CharField("ИНН", max_length=20, blank=True)
     address_ru = models.CharField("Адрес офиса (RU)", max_length=255, blank=True, default="г. Ташкент")
@@ -54,6 +61,8 @@ class SiteSettings(BaseGenericSetting):
                          FieldPanel("youtube")], "Соцсети"),
         MultiFieldPanel([FieldPanel("yandex_verification"), FieldPanel("google_verification"),
                          FieldPanel("yandex_metrika_id"), FieldPanel("ga4_id")], "Поисковики и аналитика"),
+        MultiFieldPanel([FieldPanel("egg_enabled"), FieldPanel("egg_code"), FieldPanel("egg_code_note")],
+                        "Пасхалка с жирафом"),
         MultiFieldPanel([FieldPanel("legal_name"), FieldPanel("tax_id"), FieldPanel("address_ru"),
                          FieldPanel("address_uz"), FieldPanel("address_en"), FieldPanel("office_lat"),
                          FieldPanel("office_lng"), FieldPanel("privacy_page")], "Компания"),

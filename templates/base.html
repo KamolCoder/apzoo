@@ -119,7 +119,7 @@
       {% with pp=s.privacy_page %}{% if pp and pp.localized.live %}<a href="{% pageurl pp.localized %}">{{ pp.localized.title }}</a>{% endif %}{% endwith %}
     </div>
   </div>
-  <svg class="ftr-giraffe" aria-hidden="true"><use href="#i-giraffe"/></svg>
+  {% giraffe %}
 </footer>
 {% endwith %}
 {% wagtailuserbar "bottom-left" %}

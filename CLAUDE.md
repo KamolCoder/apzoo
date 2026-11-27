@@ -57,6 +57,9 @@ hairline rules and numbered lists (`01`, `|two_digits`). Sections alternate blac
 Black sticky header; nav collapses into a full-screen black menu below 1320 px. Giraffe silhouette (`#i-giraffe`) is the
 graphic motif and the placeholder (`includes/ph.html`) until photos. Header/footer use `static/img/logo-wide.png`
 (cropped from the 150 px logo — replace with a big/SVG logo when it arrives). Container 1360 px.
+Footer giraffe (`{% giraffe %}`, `core/easter.py`, `includes/giraffe.html`): click → random animal fact (20, ru/uz/en),
+after 7 clicks → promo code from SiteSettings «Пасхалка с жирафом» (Metrika goal / GA4 event `giraffe_code`); seasonal
+looks by Tashkent time: hat 20 Dec–10 Jan, flowers in March, «Zzz» 22:00–07:00.
 Motion: `.reveal` / `.reveal-group` fade-in on scroll (only under `html.js`, off with reduced motion), ticker animation.
 Name is «Animal Planet» (Latin) in every language.
 
