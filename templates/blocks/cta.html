@@ -1,5 +1,6 @@
 {% load site_tags %}
 <div class="cta cta-{{ value.theme }}">
   <div><h2>{{ value.title }}</h2>{% if value.text %}<p>{{ value.text }}</p>{% endif %}</div>
-  {% if value.link|link_url %}<a class="btn {% if value.theme == 'dark' %}btn-yellow{% else %}btn-dark{% endif %}" href="{{ value.link|link_url }}">{{ value.link.text|default:"→" }}<svg class="icon"><use href="#i-arrow"/></svg></a>{% endif %}
+  {% if value.link|link_url %}<a class="pill {% if value.theme == 'dark' %}pill-or{% else %}pill-dark{% endif %} pill-lg" href="{{ value.link|link_url }}">{{ value.link.text|default:"→" }}<svg class="icon"><use href="#i-arrow"/></svg></a>{% endif %}
+  <svg class="cta-giraffe" aria-hidden="true"><use href="#i-giraffe"/></svg>
 </div>

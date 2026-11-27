@@ -265,9 +265,9 @@ class IconTests(TestCase):
         self.assertIn('rel="apple-touch-icon"', html)
 
 
-@override_settings(SECURE_SSL_REDIRECT=False, MEDIA_ROOT=__import__("tempfile").mkdtemp(prefix="zp-media-"))
+@override_settings(SECURE_SSL_REDIRECT=False, MEDIA_ROOT=__import__("tempfile").mkdtemp(prefix="ap-media-"))
 class SectionTests(TestCase):
-    """Catalogue, Give a Paw, home sections, news rubrics, store gallery/city, CMS roles."""
+    """Catalogue, charity, home sections, news rubrics, store gallery/city, CMS roles."""
 
     @classmethod
     def setUpTestData(cls):
@@ -276,7 +276,7 @@ class SectionTests(TestCase):
     def test_home_shows_every_section_in_order(self):
         html = self.client.get("/ru/").content.decode()
         markers = ["/ru/promos/promo-", "Крупная сеть зоомагазинов", "/ru/catalog/dogs/", "Проверенный ассортимент",
-                   "data-overview-map", "/ru/news/news-", "charity-teaser", "Royal Canin"]
+                   "data-overview-map", "/ru/news/news-", "home-charity", "Royal Canin"]
         positions = [html.index(m) for m in markers]
         self.assertEqual(positions, sorted(positions))
         self.assertIn(">23<", html)  # {stores} placeholder in stats replaced by the store count
@@ -287,7 +287,7 @@ class SectionTests(TestCase):
         home.save_revision().publish()
         html = self.client.get("/ru/").content.decode()
         self.assertNotIn("/ru/catalog/dogs/", html)
-        self.assertNotIn("charity-teaser", html)
+        self.assertNotIn("home-charity", html)
 
     def test_catalogue(self):
         resp = self.client.get("/ru/catalog/")
@@ -297,11 +297,11 @@ class SectionTests(TestCase):
         self.assertContains(resp, "Royal Canin")
         self.assertEqual(self.client.get("/uz/catalog/cats/").status_code, 200)
 
-    def test_give_a_paw_groups_and_story_status(self):
-        resp = self.client.get("/ru/give-a-paw/")
+    def test_charity_groups_and_story_status(self):
+        resp = self.client.get("/ru/help/")
         self.assertEqual(len(resp.context["stories"]), 2)
         self.assertContains(resp, "Ищет дом")
-        self.assertEqual(self.client.get("/en/give-a-paw/").status_code, 404)  # RU + UZ only
+        self.assertEqual(self.client.get("/en/help/").status_code, 404)  # RU + UZ only
 
     def test_news_kind_filter_and_article_jsonld(self):
         resp = self.client.get("/ru/news/?kind=vet")
@@ -337,7 +337,7 @@ class SectionTests(TestCase):
         self.assertEqual(GroupPagePermission.objects.filter(group=hr, permission__codename="publish_page").count(), 2)
 
 
-@override_settings(SECURE_SSL_REDIRECT=False, MEDIA_ROOT=__import__("tempfile").mkdtemp(prefix="zp-media-"))
+@override_settings(SECURE_SSL_REDIRECT=False, MEDIA_ROOT=__import__("tempfile").mkdtemp(prefix="ap-media-"))
 class SamplePhotoTests(TestCase):
     @classmethod
     def setUpTestData(cls):
@@ -361,7 +361,7 @@ class SamplePhotoTests(TestCase):
         self.assertTrue(store.image_id)
         self.assertEqual(store.photos.count(), 2)
         home = HomePage.objects.get(locale__language_code="ru")
-        self.assertTrue(all(b.value["image"] for b in home.slides))
+        self.assertEqual(len(home.hero_photos), 3)
         self.assertEqual(self.client.get("/ru/").status_code, 200)
         self.assertEqual(self.client.get("/ru/about/").status_code, 200)
 
@@ -381,9 +381,9 @@ class DeliveryLoyaltyTests(TestCase):
         from core.models import SiteSettings
         s = SiteSettings.load()
         s.app_store_url = "https://apps.apple.com/app/id1"
-        s.google_play_url = "https://play.google.com/store/apps/details?id=uz.zp"
-        s.uds_url = "https://zp.uds.app/c/join?ref=x"
-        s.uds_code = "ZOOPLANETA"
+        s.google_play_url = "https://play.google.com/store/apps/details?id=uz.ap"
+        s.uds_url = "https://ap.uds.app/c/join?ref=x"
+        s.uds_code = "ANIMALPLANET"
         s.short_phone = "1234"
         s.save()
 
@@ -394,25 +394,24 @@ class DeliveryLoyaltyTests(TestCase):
         s.save()
         resp = self.client.get("/ru/delivery/")
         self.assertContains(resp, "Express24")
-        self.assertNotContains(resp, "app-btn")
+        self.assertNotContains(resp, 'class="app"')
         self.assertNotContains(self.client.get("/ru/bonus/"), "data-copy")
 
     def test_links_buttons_qr_and_short_number(self):
         self.set_links()
         html = self.client.get("/ru/delivery/").content.decode()
-        self.assertIn('data-android="https://play.google.com/store/apps/details?id=uz.zp"', html)
+        self.assertIn('data-android="https://play.google.com/store/apps/details?id=uz.ap"', html)
         self.assertIn('class="segno"', html)
         html = self.client.get("/ru/bonus/").content.decode()
-        self.assertIn('data-copy="ZOOPLANETA"', html)
-        self.assertIn("https://zp.uds.app/c/join?ref=x", html)
+        self.assertIn('data-copy="ANIMALPLANET"', html)
+        self.assertIn("https://ap.uds.app/c/join?ref=x", html)
         home = self.client.get("/ru/").content.decode()
-        self.assertIn("service-card-dark", home)
-        self.assertIn('class="mobile-bar"', home)
+        self.assertIn("duo-card-line", home)
         self.assertIn('href="tel:1234"', home)
 
     def test_english_has_no_delivery_section(self):
         html = self.client.get("/en/").content.decode()
-        self.assertNotIn("service-card", html)
+        self.assertNotIn("duo-card", html)
         self.assertEqual(self.client.get("/en/delivery/").status_code, 404)
 
     def test_organization_contact_point(self):
@@ -429,7 +428,7 @@ class TeamAndSeedTests(TestCase):
         about = self.client.get("/ru/about/").content.decode()
         self.assertIn("Руководство", about)
         self.assertIn("Генеральный директор", about)
-        self.assertIn('class="person-quote"', about)
+        self.assertIn('class="person"', about)
         self.assertContains(self.client.get("/ru/stores/store-01/"), "Управляющий магазином")
         careers = self.client.get("/ru/careers/").content.decode()
         self.assertIn("Люди Animal Planet", careers)
@@ -458,31 +457,13 @@ class TeamAndSeedTests(TestCase):
 
 
 
-class HeroSlideTests(TestCase):
-    def test_slide_look_colours_and_tone(self):
-        from core.templatetags.site_tags import slide_look
-        self.assertEqual(slide_look({"theme": "dark"}), {"bg": "#111111", "tone": "dark"})
-        self.assertEqual(slide_look({"theme": "yellow"})["tone"], "light")
-        self.assertEqual(slide_look({"bg_color": "#ffffff", "theme": "dark"}), {"bg": "#FFFFFF", "tone": "light"})
-        self.assertEqual(slide_look({"bg_color": "red", "theme": "light"})["bg"], "#F6F5F1")  # bad hex ignored
-
-    @override_settings(MEDIA_ROOT=__import__("tempfile").mkdtemp(prefix="zp-media-"))
-    def test_edge_colour_from_photo(self):
-        from io import BytesIO
-        from django.core.files.images import ImageFile
-        from PIL import Image as PILImage
-        from wagtail.images.models import Image
-        from core.templatetags.site_tags import slide_look
-        buf = BytesIO()
-        pic = PILImage.new("RGB", (200, 100), (20, 90, 200))
-        pic.paste((255, 255, 255), (100, 0, 200, 100))  # right half white: only the left edge counts
-        pic.save(buf, "PNG")
-        img = Image.objects.create(title="blue", file=ImageFile(BytesIO(buf.getvalue()), name="blue.png"))
-        look = slide_look({"image": img, "auto_bg": True, "image_style": "photo", "theme": "yellow"})
-        self.assertEqual(look, {"bg": "#145AC8", "tone": "dark"})
-        # a cut-out object keeps the theme colour
-        self.assertEqual(slide_look({"image": img, "auto_bg": True, "image_style": "object", "theme": "yellow"})["bg"],
-                         "#FDCC27")
+class FilterTests(TestCase):
+    def test_accent_last_and_two_digits(self):
+        from core.templatetags.site_tags import accent_last, two_digits
+        self.assertEqual(accent_last("Всё рядом с домом"), 'Всё рядом с <span class="acc">домом</span>')
+        self.assertEqual(accent_last("Одно"), "Одно")
+        self.assertEqual(accent_last("a <b>"), 'a <span class="acc">&lt;b&gt;</span>')  # escaped
+        self.assertEqual(two_digits(3), "03")
 
 
 @override_settings(SECURE_SSL_REDIRECT=False)
@@ -491,11 +472,14 @@ class HomeHeroRenderTests(TestCase):
     def setUpTestData(cls):
         call_command("seed_demo", verbosity=0)
 
-    def test_hero_perks_tone_and_deals(self):
+    def test_hero_quick_links_ticker_and_deals(self):
         html = self.client.get("/ru/").content.decode()
-        self.assertIn('class="home-hero"', html)
-        self.assertIn('class="perks"', html)
-        self.assertIn('data-tone="dark"', html)      # UDS slide on black
+        self.assertIn('<span class="acc">домом</span>', html)   # orange last word of the headline
+        self.assertIn('href="/ru/promos/"', html)                # hero button page
+        self.assertIn('class="hero-badge"', html)               # store count badge
+        self.assertIn('class="wrap quick"', html)
+        self.assertIn('class="ticker"', html)
         self.assertIn('class="deal"', html)
         self.assertIn("148 000 сум", html)
-        self.assertIn('class="slider-next"', html)
+        en = self.client.get("/en/").content.decode()
+        self.assertIn('href="/en/partners/"', en)                # EN hero leads to partners

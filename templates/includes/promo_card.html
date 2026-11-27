@@ -1,13 +1,13 @@
 {% load wagtailcore_tags wagtailimages_tags site_tags %}
 <a class="card{% if promo.is_over %} is-over{% endif %}" href="{% pageurl promo %}">
-  <div class="card-media">
-    {% if promo.image %}{% image promo.image fill-640x480 format-webp loading="lazy" %}{% else %}{% include "includes/ph.html" with yellow=True %}{% endif %}
-    {% if promo.is_over %}<span class="badge badge-muted">{% t "promo_ended" %}</span>{% elif promo.badge %}<span class="badge">{{ promo.badge }}</span>{% endif %}
-  </div>
-  <div class="card-body">
-    <div class="card-meta"><svg class="icon"><use href="#i-calendar"/></svg>{% if promo.is_upcoming %}{% t "from" %} {{ promo.date_from|short_date }}{% else %}{% t "until" %} {{ promo.date_to|short_date }}{% endif %}</div>
-    <h3>{{ promo.title }}</h3>
-    {% if promo.summary %}<p>{{ promo.summary }}</p>{% endif %}
-    {% if promo.new_price %}<div class="price">{% if promo.old_price %}<s>{{ promo.old_price }}</s>{% endif %}<b>{{ promo.new_price }}</b></div>{% endif %}
-  </div>
+  <span class="card-media">
+    {% if promo.image %}{% image promo.image fill-640x520 format-webp loading="lazy" alt="" %}{% else %}{% include "includes/ph.html" %}{% endif %}
+    {% if promo.is_over %}<span class="card-badge card-badge-mute">{% t "promo_ended" %}</span>{% elif promo.badge %}<span class="card-badge">{{ promo.badge }}</span>{% endif %}
+  </span>
+  <span class="card-body">
+    <small>{% if promo.is_upcoming %}{% t "from" %} {{ promo.date_from|short_date }}{% else %}{% t "until" %} {{ promo.date_to|short_date }}{% endif %}</small>
+    <b>{{ promo.title }}</b>
+    {% if promo.summary %}<span class="card-text">{{ promo.summary }}</span>{% endif %}
+    {% if promo.new_price %}<span class="price">{% if promo.old_price %}<s>{{ promo.old_price }}</s>{% endif %}<em>{{ promo.new_price }}</em></span>{% endif %}
+  </span>
 </a>

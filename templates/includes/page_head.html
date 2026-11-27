@@ -1,18 +1,11 @@
 {% load wagtailimages_tags %}
-<header class="page-head">
-  <div class="container">
-    {% include "includes/crumbs.html" %}
-    {% if page.image %}
-    <div class="page-head-split">
-      <div>
-        <h1>{{ page.title }}</h1>
-        {% if page.intro %}<p class="lead">{{ page.intro }}</p>{% endif %}
-      </div>
-      <div class="media">{% srcset_image page.image fill-{720x540,1200x900} format-webp sizes="(max-width: 900px) 100vw, 45vw" %}</div>
+<header class="phead{% if page.image or media %} has-media{% endif %}">
+  <div class="wrap phead-grid">
+    <div class="phead-text">
+      {% include "includes/crumbs.html" %}
+      <h1>{{ title|default:page.title }}</h1>
+      {% if lead %}<p class="phead-lead">{{ lead }}</p>{% elif page.intro %}<p class="phead-lead">{{ page.intro }}</p>{% endif %}
     </div>
-    {% else %}
-      <h1>{{ page.title }}</h1>
-      {% if page.intro %}<p class="lead">{{ page.intro }}</p>{% endif %}
-    {% endif %}
+    {% if page.image %}<div class="phead-media framed">{% srcset_image page.image fill-{720x540,1200x900} format-webp sizes="(max-width: 960px) 100vw, 45vw" alt="" %}</div>{% endif %}
   </div>
 </header>

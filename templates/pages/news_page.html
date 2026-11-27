@@ -1,16 +1,18 @@
 {% extends "base.html" %}
 {% load wagtailimages_tags site_tags %}
 {% block content %}
-<section class="section-sm">
-  <div class="container">
-    <div class="article">
-      {% include "includes/crumbs.html" %}
-      <p class="muted">{{ page.date|human_date }}{% if page.kind != "news" %} · {{ page.kind_label }}{% endif %}</p>
-      <h1 style="font-size:clamp(30px,4.4vw,48px);margin:10px 0 18px">{{ page.title }}</h1>
-      {% if page.summary %}<p style="font-size:20px;color:#444;margin-bottom:32px">{{ page.summary }}</p>{% endif %}
-      {% if page.image %}<div class="article-cover">{% image page.image fill-1600x900 format-webp %}</div>{% endif %}
-      {% include "includes/body.html" with body=page.body %}
-    </div>
+<header class="phead phead-article">
+  <div class="wrap article-head">
+    {% include "includes/crumbs.html" %}
+    <p class="meta">{{ page.date|human_date }}{% if page.kind != "news" %} · <span>{{ page.kind_label }}</span>{% endif %}</p>
+    <h1>{{ page.title }}</h1>
+    {% if page.summary %}<p class="phead-lead">{{ page.summary }}</p>{% endif %}
+  </div>
+</header>
+<section class="sec sec-article">
+  <div class="wrap">
+    {% if page.image %}<div class="article-cover">{% image page.image fill-1600x900 format-webp alt="" %}</div>{% endif %}
+    <div class="article">{% include "includes/body.html" with body=page.body %}</div>
   </div>
 </section>
 {% endblock %}

@@ -1,0 +1,1 @@
+{% load site_tags %}<ol class="steps reveal-group">{% for block in steps %}<li><small>{{ forloop.counter|two_digits }}</small><b>{{ block.value.title }}</b>{% if block.value.text %}<p>{{ block.value.text }}</p>{% endif %}</li>{% endfor %}</ol>

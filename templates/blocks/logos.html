@@ -1,6 +1,6 @@
 {% load wagtailimages_tags %}
-{% if value.title %}<div class="block-heading" style="margin-bottom:28px"><h2>{{ value.title }}</h2></div>{% endif %}
-<div class="logos">
+{% if value.title %}<div class="bhead"><h2>{{ value.title }}</h2></div>{% endif %}
+<div class="brand-grid">
   {% for logo in value.logos %}<div>{% image logo max-240x96 loading="lazy" %}</div>{% endfor %}
-  {% for name in value.names %}<div>{{ name }}</div>{% endfor %}
+  {% for name in value.names %}<div><span>{{ name }}</span></div>{% endfor %}
 </div>

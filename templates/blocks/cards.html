@@ -1,17 +1,22 @@
-{% load wagtailcore_tags wagtailimages_tags %}
-{% if value.title %}<div class="block-heading" style="margin-bottom:32px"><h2>{{ value.title }}</h2>{% if value.text %}<p>{{ value.text }}</p>{% endif %}</div>{% endif %}
-<div class="grid grid-{{ value.columns }}">
+{% load wagtailcore_tags wagtailimages_tags site_tags %}
+{% if value.title %}<div class="bhead"><h2>{{ value.title }}</h2>{% if value.text %}<p>{{ value.text }}</p>{% endif %}</div>{% endif %}
+{% if value.style == "photo" %}
+<div class="cards cards-{{ value.columns }} reveal-group">
 {% for item in value.items %}
-  {% if value.style == "photo" %}
   {% if item.page %}<a class="card" href="{% pageurl item.page.localized %}">{% else %}<div class="card">{% endif %}
-    <div class="card-media">{% if item.image %}{% image item.image fill-640x480 format-webp loading="lazy" %}{% else %}{% include "includes/ph.html" %}{% endif %}</div>
-    <div class="card-body"><h3>{{ item.title }}</h3>{% if item.text %}<p>{{ item.text }}</p>{% endif %}</div>
+    <span class="card-media">{% if item.image %}{% image item.image fill-640x520 format-webp loading="lazy" alt="" %}{% else %}{% include "includes/ph.html" %}{% endif %}</span>
+    <span class="card-body"><b>{{ item.title }}</b>{% if item.text %}<span class="card-text">{{ item.text }}</span>{% endif %}</span>
   {% if item.page %}</a>{% else %}</div>{% endif %}
-  {% else %}
-  {% if item.page %}<a class="feature" href="{% pageurl item.page.localized %}">{% else %}<div class="feature">{% endif %}
-    {% if value.style == "numbered" %}<span class="feature-num">{{ forloop.counter }}</span>{% endif %}
-    <h3>{{ item.title }}</h3>{% if item.text %}<p>{{ item.text }}</p>{% endif %}
-  {% if item.page %}</a>{% else %}</div>{% endif %}
-  {% endif %}
 {% endfor %}
 </div>
+{% else %}
+<div class="feats feats-{{ value.columns }} reveal-group">
+{% for item in value.items %}
+  {% if item.page %}<a class="feat" href="{% pageurl item.page.localized %}">{% else %}<div class="feat">{% endif %}
+    <small>{% if value.style == "numbered" %}{{ forloop.counter|two_digits }}{% else %}—{% endif %}</small>
+    <h3>{{ item.title }}</h3>{% if item.text %}<p>{{ item.text }}</p>{% endif %}
+    {% if item.page %}<svg class="icon"><use href="#i-arrow"/></svg>{% endif %}
+  {% if item.page %}</a>{% else %}</div>{% endif %}
+{% endfor %}
+</div>
+{% endif %}
